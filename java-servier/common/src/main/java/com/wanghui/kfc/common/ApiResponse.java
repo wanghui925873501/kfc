@@ -1,14 +1,25 @@
 package com.wanghui.kfc.common;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
 /**
  * 统一的 HTTP 响应数据结构。
- *
- * @param code 业务状态码
- * @param message 面向调用方的简短说明
- * @param data 业务数据；失败时通常为空
  * @param <T> 业务数据类型
  */
-public record ApiResponse<T>(String code, String message, T data) {
+@Data
+@AllArgsConstructor
+public class ApiResponse<T> {
+    /** 供 JSON 框架或调用方逐项设置字段。 */
+    public ApiResponse() { }
+
+    /** 业务状态码。 */
+    private String code;
+    /** 面向调用方的简短说明。 */
+    private String message;
+    /** 业务数据；失败时通常为空。 */
+    private T data;
+
     /**
      * 创建成功响应。
      *

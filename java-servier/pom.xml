@@ -9,6 +9,7 @@
         <module>common</module>
         <module>db</module>
         <module>kfcapi</module>
+        <module>kfc-ali-pay</module>
         <module>server</module>
     </modules>
     <properties>
@@ -17,6 +18,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.5.12</spring-boot.version>
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
+        <lombok.version>1.18.48</lombok.version>
+        <hutool.version>5.8.47</hutool.version>
+        <fastjson2.version>2.0.65</fastjson2.version>
     </properties>
     <dependencyManagement><dependencies>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-dependencies</artifactId><version>${spring-boot.version}</version><type>pom</type><scope>import</scope></dependency>
@@ -24,9 +28,17 @@
         <dependency><groupId>${project.groupId}</groupId><artifactId>common</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>${project.groupId}</groupId><artifactId>db</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>${project.groupId}</groupId><artifactId>kfcapi</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><version>${lombok.version}</version></dependency>
+        <dependency><groupId>cn.hutool</groupId><artifactId>hutool-all</artifactId><version>${hutool.version}</version></dependency>
+        <dependency><groupId>com.alibaba.fastjson2</groupId><artifactId>fastjson2</artifactId><version>${fastjson2.version}</version></dependency>
     </dependencies></dependencyManagement>
+    <dependencies>
+        <dependency><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><scope>provided</scope></dependency>
+        <dependency><groupId>cn.hutool</groupId><artifactId>hutool-all</artifactId></dependency>
+        <dependency><groupId>com.alibaba.fastjson2</groupId><artifactId>fastjson2</artifactId></dependency>
+    </dependencies>
     <build><pluginManagement><plugins>
-        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.14.0</version><configuration><release>21</release></configuration></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.14.0</version><configuration><release>21</release><annotationProcessorPaths><path><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><version>${lombok.version}</version></path></annotationProcessorPaths></configuration></plugin>
         <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><version>3.5.3</version></plugin>
         <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId><version>${spring-boot.version}</version></plugin>
     </plugins></pluginManagement><plugins>

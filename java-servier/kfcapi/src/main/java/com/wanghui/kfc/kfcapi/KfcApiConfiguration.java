@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
-/** 配置上游 HTTP 客户端及默认拒绝的鉴权实现。 */
+/** 配置上游 HTTP 客户端及无域名鉴权实现时的默认拒绝策略。 */
 @Configuration
 @EnableConfigurationProperties(UpstreamProperties.class)
 public class KfcApiConfiguration {

@@ -5,7 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.util.EnumMap;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
 import org.springframework.web.client.RestClient;
 
 class UpstreamGatewayTest {
@@ -33,5 +37,14 @@ class UpstreamGatewayTest {
         urls.put(Upstream.ORDERING, URI.create("http://order.kfc.com.cn"));
         assertThatThrownBy(() -> gateway.post(Upstream.ORDERING, "/api/v2/menu/list", mapper.createObjectNode()))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("Invalid HTTPS");
+    }
+
+    @Test
+    void bindsCapturedAppLoginDomainToItsOwnUpstream() {
+        var source = new MapConfigurationPropertySource(Map.of(
+                "kfc.upstream.urls.app-login", "https://applogin.kfcapp.cn"));
+        var properties = new Binder(source).bind("kfc.upstream", Bindable.of(UpstreamProperties.class)).get();
+        org.assertj.core.api.Assertions.assertThat(properties.url(Upstream.APP_LOGIN))
+                .isEqualTo(URI.create("https://applogin.kfcapp.cn"));
     }
 }

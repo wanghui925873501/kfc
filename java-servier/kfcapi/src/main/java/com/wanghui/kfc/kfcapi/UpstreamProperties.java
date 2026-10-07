@@ -3,39 +3,20 @@ package com.wanghui.kfc.kfcapi;
 import java.net.URI;
 import java.util.EnumMap;
 import java.util.Map;
+import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /** 上游启用状态与固定 HTTPS 域名配置。 */
+@Data
 @ConfigurationProperties(prefix = "kfc.upstream")
 public class UpstreamProperties {
-    /** 外部请求总开关；默认关闭，避免未联调时访问生产域名。 */
-    private boolean enabled;
-    /** 五个上游服务与其 HTTPS 基础地址的映射。 */
-    private Map<Upstream, URI> urls = new EnumMap<>(Upstream.class);
-
-    /** 供 Spring 绑定上游配置。 */
+    /** 供 Spring 绑定上游地址配置。 */
     public UpstreamProperties() { }
 
-    /**
-     * 读取上游请求开关。
-     * @return 是否允许发起上游请求
-     */
-    public boolean isEnabled() { return enabled; }
-    /**
-     * 设置上游请求开关。
-     * @param enabled 是否允许发起上游请求
-     */
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
-    /**
-     * 读取上游地址映射。
-     * @return 上游服务到基础 URI 的映射
-     */
-    public Map<Upstream, URI> getUrls() { return urls; }
-    /**
-     * 设置上游地址映射。
-     * @param urls 上游服务到基础 URI 的映射
-     */
-    public void setUrls(Map<Upstream, URI> urls) { this.urls = urls; }
+    /** 外部请求总开关；默认关闭，避免未联调时访问生产域名。 */
+    private boolean enabled;
+    /** 已确认服务及静态候选服务与 HTTPS 基础地址的映射。 */
+    private Map<Upstream, URI> urls = new EnumMap<>(Upstream.class);
 
     /**
      * 取得并校验一个上游的基础 URI，拒绝非 HTTPS、用户信息和路径片段。

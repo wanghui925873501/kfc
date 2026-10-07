@@ -1,19 +1,19 @@
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${SERVER_PORT:19111}
 spring:
   application:
     name: kfc-monolith
+  config:
+    import: "optional:file:../.env.kfc-reverse.local[.properties]"
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/kfc_app?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
-    username: ${DB_USERNAME:kfc_app}
-    password: ${DB_PASSWORD:}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-  flyway:
-    locations: classpath:db/migration
+      password: ${REDIS_PASSWORD:qs888888###}
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
@@ -26,9 +26,18 @@ kfc:
     urls:
       ordering: ${KFC_ORDERING_URL:https://order.kfc.com.cn}
       login: ${KFC_LOGIN_URL:https://login.kfc.com.cn}
+      app-login: ${KFC_APP_LOGIN_URL:https://applogin.kfcapp.cn}
       coupon: ${KFC_COUPON_URL:https://appcoupon.kfc.com.cn}
       mall: ${KFC_MALL_URL:https://appmall.kfc.com.cn}
       prime: ${KFC_PRIME_URL:https://appprime.kfc.com.cn}
+  app-login:
+    client-key: 'kbappkwle8K1Mhlc'
+    client-secret: 'WYjEbpFholuphDuO'
+    des-key: 'D963r1wp'
+    request-secret-key: 'kfc'
+  session:
+    ttl: ${KFC_SESSION_TTL:PT8H}
+    key-base64: ${KFC_SESSION_KEY_BASE64:}
 management:
   endpoints:
     web:

@@ -1,0 +1,29 @@
+server:
+  port: ${KFC_ALI_PAY_PORT:8301}
+  servlet:
+    context-path: /kfc-ali-pay
+
+spring:
+  application:
+    name: kfc-ali-pay
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+kfc-ali-pay:
+  management-token: ${KFC_ALI_PAY_MANAGEMENT_TOKEN:change-me}
+  reconciliation:
+    enabled: ${KFC_ORDER_RECONCILIATION_ENABLED:false}
+    base-url: ${KFC_ORDER_API_BASE_URL:http://127.0.0.1:8080}
+    path-template: ${KFC_ORDER_API_PATH:/internal/kfc/orders/{orderId}}
+    interval-ms: ${KFC_ORDER_RECONCILIATION_INTERVAL_MS:2000}
+  cdp:
+    enabled: ${KFC_ALI_PAY_CDP_ENABLED:false}
+    debug-address: ${KFC_ALI_PAY_CDP_ADDRESS:127.0.0.1:9222}
+    allowed-hosts:
+      - mclient.alipay.com
+      - openapi.alipay.com
+      - excashier.alipay.com

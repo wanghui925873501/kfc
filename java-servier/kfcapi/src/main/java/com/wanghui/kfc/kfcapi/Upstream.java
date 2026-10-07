@@ -1,11 +1,13 @@
 package com.wanghui.kfc.kfcapi;
 
-/** 五个首批建模的肯德基上游服务，实际 API 域名仍需联调核实。 */
+/** 已抓包确认的 App 登录上游与首批静态候选上游的标识。 */
 public enum Upstream {
     /** 点餐与菜单。 */
     ORDERING,
-    /** 登录与用户身份。 */
+    /** 静态代码中的登录与用户身份候选服务。 */
     LOGIN,
+    /** 已抓包确认的 App 短信登录服务。 */
+    APP_LOGIN,
     /** 优惠券。 */
     COUPON,
     /** 商城与活动商品。 */

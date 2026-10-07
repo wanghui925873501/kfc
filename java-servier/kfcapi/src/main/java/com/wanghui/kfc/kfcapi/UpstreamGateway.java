@@ -1,10 +1,11 @@
 package com.wanghui.kfc.kfcapi;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.NullNode;
 import java.net.URI;
+import java.util.Collections;
 import java.util.Map;
 import java.util.regex.Pattern;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -47,11 +48,34 @@ public class UpstreamGateway {
      * @throws UpstreamException 上游响应错误或连接失败时
      */
     public JsonNode post(Upstream upstream, String path, JsonNode body) {
+        return post(upstream, path, body, Collections.emptyMap());
+    }
+
+    /**
+     * 向固定上游路径发送 JSON POST 请求及业务客户端头。
+     *
+     * @param upstream 上游服务
+     * @param path 固定路径，不接受调用方提供的完整 URL
+     * @param body JSON 请求体
+     * @param extraHeaders 由内部域名客户端构造的业务请求头
+     * @return 上游 JSON 响应
+     * @throws IllegalStateException 上游未启用或鉴权未配置时
+     * @throws UpstreamException 上游响应错误或连接失败时
+     */
+    public JsonNode post(Upstream upstream, String path, JsonNode body, Map<String, String> extraHeaders) {
         URI target = target(upstream, path);
+        String bodyJson = body.toString();
         try {
             return client.post().uri(target).contentType(MediaType.APPLICATION_JSON)
-                    .headers(headers -> authentication.apply(upstream, path, body, headers))
-                    .body(body).retrieve()
+                    .headers(headers -> {
+                        if (upstream == Upstream.APP_LOGIN) {
+                            headers.set(HttpHeaders.CONTENT_TYPE, "application/json; charset=utf-8");
+                            headers.set(HttpHeaders.ACCEPT_ENCODING, "gzip");
+                        }
+                        extraHeaders.forEach(headers::set);
+                        authentication.apply(upstream, path, bodyJson, headers);
+                    })
+                    .body(bodyJson).retrieve()
                     .onStatus(status -> status.isError(), (request, response) -> {
                         throw new UpstreamException(upstream, response.getStatusCode().value(), "Upstream request failed");
                     }).body(JsonNode.class);
@@ -78,7 +102,7 @@ public class UpstreamGateway {
         URI target = builder.build().encode().toUri();
         try {
             return client.get().uri(target)
-                    .headers(headers -> authentication.apply(upstream, path, NullNode.instance, headers))
+                    .headers(headers -> authentication.apply(upstream, path, "", headers))
                     .retrieve().onStatus(status -> status.isError(), (request, response) -> {
                         throw new UpstreamException(upstream, response.getStatusCode().value(), "Upstream request failed");
                     }).body(JsonNode.class);
