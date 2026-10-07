@@ -1,0 +1,10 @@
+android-user-home/
+avd/
+captures/*.mitm
+captures/*.png
+downloads/
+logs/
+mitmproxy-home/
+mitmproxy-venv/
+run/
+sdk/

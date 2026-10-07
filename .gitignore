@@ -1,0 +1,42 @@
+# Local Android package, extracted third-party files, and analysis tools
+/android/KFC_Brand.apk
+/android/reverse-source/
+/android/reverse-tools/
+
+# Android capture lab: keep documentation and scripts only
+/android/lab/android-user-home/
+/android/lab/avd/
+/android/lab/captures/
+/android/lab/cmdline-tools-extract/
+/android/lab/downloads/
+/android/lab/logs/
+/android/lab/mitmproxy-home/
+/android/lab/mitmproxy-venv/
+/android/lab/run/
+/android/lab/sdk/
+
+# Build output and local dependencies
+**/target/
+**/.m2/
+**/.idea/
+**/node_modules/
+**/dist/
+**/build/
+**/.gradle/
+*.iml
+
+# Local secrets and credentials
+.env
+.env.*
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.key
+*.pem
+*.mitm
+*.mitm.partial
+
+# Local working notes
+/新建文本文档.txt
+/后端技术说明.txt

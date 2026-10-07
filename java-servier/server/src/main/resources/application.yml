@@ -1,0 +1,36 @@
+server:
+  port: ${SERVER_PORT:8080}
+spring:
+  application:
+    name: kfc-monolith
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/kfc_app?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${DB_USERNAME:kfc_app}
+    password: ${DB_PASSWORD:}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  flyway:
+    locations: classpath:db/migration
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+kfc:
+  upstream:
+    enabled: ${KFC_UPSTREAM_ENABLED:false}
+    urls:
+      ordering: ${KFC_ORDERING_URL:https://order.kfc.com.cn}
+      login: ${KFC_LOGIN_URL:https://login.kfc.com.cn}
+      coupon: ${KFC_COUPON_URL:https://appcoupon.kfc.com.cn}
+      mall: ${KFC_MALL_URL:https://appmall.kfc.com.cn}
+      prime: ${KFC_PRIME_URL:https://appprime.kfc.com.cn}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
