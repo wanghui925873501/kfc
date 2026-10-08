@@ -23,6 +23,7 @@ import com.wanghui.kfc.kfcapi.rnorderkfccomcn.vo.RnOrderInitResult;
 import com.wanghui.kfc.server.context.KfcRequestContext;
 import com.wanghui.kfc.server.context.KfcRequestContextHolder;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderFlowVo;
+import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderStoreSearchVo;
 import java.util.LinkedHashMap;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -87,6 +88,31 @@ class RnOrderServiceTest {
                 .extracting("code").isEqualTo("RN_ORDER_FLOW_EXPIRED");
         verify(api, never()).menuDetail(any(), any(), anyString(),
                 org.mockito.ArgumentMatchers.anyBoolean());
+    }
+
+    @Test
+    void searchesStoresWithPhoneBoundFlow() throws Exception {
+        RnOrderApi api = mock(RnOrderApi.class);
+        KfcRequestContextHolder holder = mock(KfcRequestContextHolder.class);
+        RnOrderFlowStore store = mock(RnOrderFlowStore.class);
+        RnOrderViewMapper viewMapper = mock(RnOrderViewMapper.class);
+        RnOrderFlowState state = new RnOrderFlowState();
+        state.setSession(session());
+        when(holder.require()).thenReturn(request());
+        when(store.resolve(FLOW_ID, SecureUtil.sha256(PHONE))).thenReturn(Optional.of(state));
+        JsonNode response = json("{\"code\":0,\"data\":{\"stores\":[]}}");
+        when(api.searchStoresByCityCodeAndKeyword(any(), any(), any(), anyString(),
+                anyString())).thenReturn(response);
+        RnOrderStoreSearchVo mapped = new RnOrderStoreSearchVo();
+        when(viewMapper.searchStores(response)).thenReturn(mapped);
+        RnOrderService service = new RnOrderService(api, holder, store, viewMapper);
+
+        assertThat(service.searchStores(PHONE, FLOW_ID, "25.7", "113.0", "431000",
+                " 郴州 ", " 龙泉 ")).isSameAs(mapped);
+        verify(api).searchStoresByCityCodeAndKeyword(any(), any(), any(),
+                org.mockito.ArgumentMatchers.eq("郴州"),
+                org.mockito.ArgumentMatchers.eq("龙泉"));
+        verify(store).save(FLOW_ID, state);
     }
 
     private KfcRequestContext request() {

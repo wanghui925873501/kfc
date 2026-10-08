@@ -89,12 +89,13 @@ RN 点餐浏览接口为 `POST /api/v1/rn-order/flows`、`/stores`、`/menu` 和
 
 ## 手动 RN 选店与菜单测试
 
-`server/src/test/java/com/wanghui/kfc/server/api/rnorderkfccomcn/RnOrderApiTest.java` 按 `AppLoginApiTest` 的手工测试模式提供两个独立方法。`storeQueriesTest` 验证初始化、定位城市、城市列表、附近门店和账号常用门店；`menuAndDetailTest` 验证门店、菜单，并在填写 `linkId` 后继续验证商品详情。测试从数据库按手机号读取已登录账号的 token、安装和客户端档案，不在源码中填写这些敏感字段。
+`server/src/test/java/com/wanghui/kfc/server/api/rnorderkfccomcn/RnOrderApiTest.java` 按 `AppLoginApiTest` 的手工测试模式提供三个独立方法。`storeQueriesTest` 验证初始化、定位城市、城市列表、附近门店和账号常用门店；`storeKeywordSearchTest` 验证城市关键词门店搜索；`menuAndDetailTest` 验证门店、菜单，并在填写 `linkId` 后继续验证商品详情。测试从数据库按手机号读取已登录账号的 token、安装和客户端档案，不在源码中填写这些敏感字段。
 
-两个方法默认带 `@Disabled`，普通构建不会访问 KFC。运行前在根目录忽略文件 `.env.kfc-reverse.local` 配置 `KFC_RN_ORDER_TEST_PHONE`、`KFC_RN_ORDER_TEST_LATITUDE`、`KFC_RN_ORDER_TEST_LONGITUDE` 和 `KFC_RN_ORDER_TEST_GB_CITY_CODE`；菜单测试可选配置 `KFC_RN_ORDER_TEST_STORE_CODE` 和 `KFC_RN_ORDER_TEST_LINK_ID`。门店编码为空时会选择附近门店第一项，商品标识为空时只验证到菜单。只移除本次要运行的方法上的 `@Disabled`，从 `java-servier` 目录执行以下对应命令，运行完成后恢复注解：
+三个方法默认带 `@Disabled`，普通构建不会访问 KFC。运行前在根目录忽略文件 `.env.kfc-reverse.local` 配置 `KFC_RN_ORDER_TEST_PHONE`、`KFC_RN_ORDER_TEST_LATITUDE`、`KFC_RN_ORDER_TEST_LONGITUDE` 和 `KFC_RN_ORDER_TEST_GB_CITY_CODE`；关键词搜索另需 `KFC_RN_ORDER_TEST_CITY_NAME` 和 `KFC_RN_ORDER_TEST_KEYWORD`；菜单测试可选配置 `KFC_RN_ORDER_TEST_STORE_CODE` 和 `KFC_RN_ORDER_TEST_LINK_ID`。门店编码为空时会选择附近门店第一项，商品标识为空时只验证到菜单。只移除本次要运行的方法上的 `@Disabled`，从 `java-servier` 目录执行以下对应命令，运行完成后恢复注解：
 
 ```powershell
 mvn -s .mvn/settings.xml -pl server -am "-Dtest=RnOrderApiTest#storeQueriesTest" -Dsurefire.failIfNoSpecifiedTests=false test
+mvn -s .mvn/settings.xml -pl server -am "-Dtest=RnOrderApiTest#storeKeywordSearchTest" -Dsurefire.failIfNoSpecifiedTests=false test
 mvn -s .mvn/settings.xml -pl server -am "-Dtest=RnOrderApiTest#menuAndDetailTest" -Dsurefire.failIfNoSpecifiedTests=false test
 ```
 
@@ -110,7 +111,7 @@ mvn -s .mvn/settings.xml -pl server -am "-Dtest=RnOrderApiTest#menuAndDetailTest
 
 ## 后续联调次序
 
-1. 用授权账号的只读请求逐条验证 `RnOrderApi` 初始化、选店和菜单方法，并保存真实 Reqable 证据；当前首批方法已经 Java 线上联调成功。
-2. 在 UniApp 按 `docs/FRONTEND_RN_ORDER_API.md` 接入已完成的强类型接口；关键词搜索在补齐底层方法前保持禁用或明确未开放。
+1. 为城市关键词门店搜索补录 Reqable 原始会话并运行一致性检查；接口已通过 Java 与 UniApp 真实只读联调，但当前字段证据来自 APK bundle 静态分析。
+2. 继续按 `docs/FRONTEND_RN_ORDER_API.md` 扩展只读页面，尚未验证的辅助接口必须保持禁用或明确未开放。
 3. 静态候选域名继续逐一核对真实请求的域名、方法、头、参数和响应，区分页面域名与 API 域名。
 4. 购物车、下单和支付另行接入；下单和支付需增加幂等、状态核对、风控交互和回调验签，不能由本轮只读客户端自动扩展。

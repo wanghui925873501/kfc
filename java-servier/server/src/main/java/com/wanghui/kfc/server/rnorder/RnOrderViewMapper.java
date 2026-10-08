@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.MissingNode;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderFlowVo;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderMenuVo;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderProductDetailVo;
+import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderStoreSearchVo;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderStoresVo;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -47,6 +48,18 @@ public class RnOrderViewMapper {
         RnOrderStoresVo result = new RnOrderStoresVo();
         result.setNearbyStores(stores(data(nearbyResponse).path("stores")));
         result.setCustomerStores(stores(data(customerResponse).path("stores")));
+        return result;
+    }
+
+    /**
+     * 映射城市关键词门店搜索响应。
+     *
+     * @param response 上游关键词搜索响应
+     * @return 仅包含公开门店字段的搜索结果
+     */
+    public RnOrderStoreSearchVo searchStores(JsonNode response) {
+        RnOrderStoreSearchVo result = new RnOrderStoreSearchVo();
+        result.setStores(stores(data(response).path("stores")));
         return result;
     }
 

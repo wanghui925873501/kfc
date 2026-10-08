@@ -25,6 +25,7 @@ public class RnOrderAuthentication implements UpstreamAuthentication {
             "/store-portal/api/v2/city/getCityByRgeoCode",
             "/store-portal/api/v2/city/cities",
             "/store-portal/api/v2/store/searchByLbs",
+            "/store-portal/api/v2/store/searchByCityCodeAndKeyword",
             "/store-portal/api/v2/customer/queryStores",
             "/store-portal/api/v2/store/validStore");
     /** 复用抓包已证明一致的 KFC 客户端签名材料。 */

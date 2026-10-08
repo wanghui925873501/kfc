@@ -4,10 +4,12 @@ import com.wanghui.kfc.common.ApiResponse;
 import com.wanghui.kfc.server.controller.rnorder.param.RnOrderDetailParam;
 import com.wanghui.kfc.server.controller.rnorder.param.RnOrderMenuParam;
 import com.wanghui.kfc.server.controller.rnorder.param.RnOrderStartParam;
+import com.wanghui.kfc.server.controller.rnorder.param.RnOrderStoreSearchParam;
 import com.wanghui.kfc.server.controller.rnorder.param.RnOrderStoresParam;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderFlowVo;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderMenuVo;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderProductDetailVo;
+import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderStoreSearchVo;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderStoresVo;
 import com.wanghui.kfc.server.rnorder.RnOrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -61,6 +63,21 @@ public class RnOrderController {
         return ApiResponse.ok(service.stores(param.getPhone(), param.getFlowId(),
                 param.getLatitude(), param.getLongitude(), param.getGbCityCode(),
                 param.getStoreCode()));
+    }
+
+    /**
+     * 按用户选择的城市和关键词搜索餐厅。
+     *
+     * @param param 当前流程、城市中心坐标和搜索关键词
+     * @return 匹配餐厅名称或地址的公开门店列表
+     */
+    @PostMapping(value = "/stores/search", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "按城市和关键词搜索门店")
+    public ApiResponse<RnOrderStoreSearchVo> searchStores(
+            @Valid @RequestBody RnOrderStoreSearchParam param) {
+        return ApiResponse.ok(service.searchStores(param.getPhone(), param.getFlowId(),
+                param.getLatitude(), param.getLongitude(), param.getGbCityCode(),
+                param.getCityName(), param.getKeyword()));
     }
 
     /**

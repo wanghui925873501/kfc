@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderFlowVo;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderMenuVo;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderProductDetailVo;
+import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderStoreSearchVo;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderStoresVo;
 import org.junit.jupiter.api.Test;
 
@@ -92,6 +93,24 @@ class RnOrderViewMapperTest {
                     assertThat(item.getName()).isEqualTo("可乐"));
         });
         assertThat(objectMapper.writeValueAsString(mappedDetail))
+                .doesNotContain("sessionId", "must-not-leak");
+    }
+
+    @Test
+    void mapsKeywordSearchStoresWithoutLeakingUpstreamFields() throws Exception {
+        JsonNode response = json("""
+                {"code":0,"data":{"stores":[{"storeCode":"S001",
+                "storeName":"龙泉示例店","address":"龙泉路 1 号","latitude":"25.7",
+                "longitude":"113.0","sessionId":"must-not-leak"}]}}
+                """);
+
+        RnOrderStoreSearchVo result = mapper.searchStores(response);
+
+        assertThat(result.getStores()).singleElement().satisfies(store -> {
+            assertThat(store.getStoreCode()).isEqualTo("S001");
+            assertThat(store.getStoreName()).isEqualTo("龙泉示例店");
+        });
+        assertThat(objectMapper.writeValueAsString(result))
                 .doesNotContain("sessionId", "must-not-leak");
     }
 

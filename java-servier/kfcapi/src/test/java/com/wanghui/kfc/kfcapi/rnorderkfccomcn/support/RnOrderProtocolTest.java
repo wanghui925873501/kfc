@@ -125,6 +125,41 @@ class RnOrderProtocolTest {
         fixture.server.verify();
     }
 
+    @Test
+    void searchesStoresByCityKeywordWithoutKbsHeaders() throws IOException {
+        Fixture fixture = fixture();
+        var session = new com.wanghui.kfc.kfcapi.rnorderkfccomcn.param.RnOrderSession();
+        session.setSessionId("session-1");
+        session.setRouteCell("route-a");
+        session.setCookies(new java.util.LinkedHashMap<>());
+        session.getCookies().put("route-cell", "route-a");
+        session.getCookies().put("sessionIdCookie", "session-cookie");
+        session.getCookies().put("sessionIdCookie.sig", "session-signature");
+
+        fixture.server.expect(once(), requestTo(
+                        "https://rnorder.kfc.com.cn/store-portal/api/v2/store/"
+                                + "searchByCityCodeAndKeyword"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(request -> {
+                    assertThat(request.getHeaders()).doesNotContainKeys("kbck", "kbcts", "kbsv");
+                    JsonNode body = mapper.readTree(((MockClientHttpRequest) request).getBodyAsString());
+                    assertThat(body.get("keyword").asText()).isEqualTo("square");
+                    assertThat(body.get("cityNameMy").asText()).isEqualTo("示例市");
+                    assertThat(body.get("gbCityCode").asText()).isEqualTo("310000");
+                    assertThat(body.get("mylat").asText()).isNotEqualTo("31.2304");
+                    assertThat(body.get("encodeList").toString())
+                            .isEqualTo("[\"mylat\",\"mylng\",\"mylatPhone\",\"mylngPhone\"]");
+                })
+                .andRespond(withSuccess("{\"code\":0,\"data\":{\"stores\":[]}}",
+                        MediaType.APPLICATION_JSON));
+
+        JsonNode response = fixture.api.searchStoresByCityCodeAndKeyword(fixture.context,
+                session, fixture.location, "示例市", "square");
+
+        assertThat(response.get("code").asInt()).isZero();
+        fixture.server.verify();
+    }
+
     private Fixture fixture() {
         AppLoginProperties credentials = new AppLoginProperties();
         credentials.setClientKey("key");

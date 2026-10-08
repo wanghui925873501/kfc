@@ -33,6 +33,9 @@ public class RnOrderApi {
     private static final String CITIES_PATH = "/store-portal/api/v2/city/cities";
     /** 附近门店传输路径。 */
     private static final String SEARCH_STORES_PATH = "/store-portal/api/v2/store/searchByLbs";
+    /** 城市关键词门店搜索传输路径。 */
+    private static final String SEARCH_STORES_BY_KEYWORD_PATH =
+            "/store-portal/api/v2/store/searchByCityCodeAndKeyword";
     /** 用户常用门店传输路径。 */
     private static final String QUERY_STORES_PATH = "/store-portal/api/v2/customer/queryStores";
     /** 门店有效性校验传输路径。 */
@@ -197,6 +200,45 @@ public class RnOrderApi {
                 .add("mylatPhone").add("mylngPhone");
         appendCustomerMarker(body);
         return post(context, session, SEARCH_STORES_PATH, body);
+    }
+
+    /**
+     * 按所选城市和关键词搜索门店。
+     *
+     * <p>调用 {@code POST /store-portal/api/v2/store/searchByCityCodeAndKeyword}。路径、
+     * 参数组成和无 KBS 调用方式先由 APK RN bundle 的 {@code searchByCityCodeAndKeyword}
+     * 与搜索页 {@code queryNearbyStore} 定位，随后由 Reqable 证据
+     * {@code 抓包文件/门店搜索/01-[13]-search-by-city-keyword} 验证。</p>
+     *
+     * @param context 已登录用户和安装上下文
+     * @param session 已初始化的 RN 点餐会话
+     * @param location 所选城市中心坐标和国标城市编码
+     * @param cityName 所选城市中文名
+     * @param keyword 用户提交的门店关键词
+     * @return 上游门店搜索 JSON
+     */
+    public JsonNode searchStoresByCityCodeAndKeyword(RnOrderContext context,
+                                                      RnOrderSession session,
+                                                      RnOrderLocation location,
+                                                      String cityName, String keyword) {
+        require(context, session, location);
+        requireText(cityName, "cityName");
+        requireText(keyword, "keyword");
+        ObjectNode body = storeBody(context, session);
+        String encryptedLatitude = crypto.encrypt(location.getLatitude());
+        String encryptedLongitude = crypto.encrypt(location.getLongitude());
+        body.put("keyword", keyword);
+        body.put("cityNameMy", cityName);
+        body.put("districtNameMy", "");
+        body.put("gbCityCode", valueOrEmpty(location.getGbCityCode()));
+        body.put("mylat", encryptedLatitude);
+        body.put("mylng", encryptedLongitude);
+        body.put("mylatPhone", encryptedLatitude);
+        body.put("mylngPhone", encryptedLongitude);
+        body.putArray("encodeList").add("mylat").add("mylng")
+                .add("mylatPhone").add("mylngPhone");
+        appendCustomerMarker(body);
+        return post(context, session, SEARCH_STORES_BY_KEYWORD_PATH, body);
     }
 
     /**

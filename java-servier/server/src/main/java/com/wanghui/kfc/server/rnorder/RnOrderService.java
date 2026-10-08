@@ -11,6 +11,7 @@ import com.wanghui.kfc.server.context.KfcRequestContextHolder;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderFlowVo;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderMenuVo;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderProductDetailVo;
+import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderStoreSearchVo;
 import com.wanghui.kfc.server.controller.rnorder.vo.RnOrderStoresVo;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -97,6 +98,31 @@ public class RnOrderService {
         requireSuccess(customer, "常用门店");
         flowStore.save(flowId, state);
         return viewMapper.stores(nearby, customer);
+    }
+
+    /**
+     * 按所选城市和关键词搜索门店。
+     *
+     * @param phone 当前授权手机号
+     * @param flowId 当前手机号的点餐流程标识
+     * @param latitude 所选城市中心纬度
+     * @param longitude 所选城市中心经度
+     * @param gbCityCode 所选城市国标编码
+     * @param cityName 所选城市中文名
+     * @param keyword 用户提交的餐厅名称或地址关键词
+     * @return 关键词匹配的公开门店列表
+     */
+    public RnOrderStoreSearchVo searchStores(String phone, String flowId, String latitude,
+                                              String longitude, String gbCityCode,
+                                              String cityName, String keyword) {
+        KfcRequestContext request = request(phone);
+        RnOrderFlowState state = flow(flowId, phone);
+        RnOrderLocation location = location(latitude, longitude, gbCityCode);
+        JsonNode response = api.searchStoresByCityCodeAndKeyword(context(request),
+                state.getSession(), location, cityName.trim(), keyword.trim());
+        requireSuccess(response, "门店搜索");
+        flowStore.save(flowId, state);
+        return viewMapper.searchStores(response);
     }
 
     /**

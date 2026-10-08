@@ -71,6 +71,28 @@ public class RnOrderApiTest {
     }
 
     /**
+     * 初始化 RN 点餐会话，并按所选城市和关键词验证门店搜索。
+     */
+    @Test
+    @Disabled("填写本人授权手机号和搜索参数后，单独移除此方法的注解运行")
+    void storeKeywordSearchTest() {
+        String phone = requiredLocalValue("KFC_RN_ORDER_TEST_PHONE");
+        RnOrderLocation location = location(requiredLocalValue("KFC_RN_ORDER_TEST_LATITUDE"),
+                requiredLocalValue("KFC_RN_ORDER_TEST_LONGITUDE"),
+                requiredLocalValue("KFC_RN_ORDER_TEST_GB_CITY_CODE"));
+        String cityName = requiredLocalValue("KFC_RN_ORDER_TEST_CITY_NAME");
+        String keyword = requiredLocalValue("KFC_RN_ORDER_TEST_KEYWORD");
+        RnOrderContext context = context(phone);
+
+        RnOrderInitResult initialized = rnOrderApi.initializePreorder(context, location);
+        assertSuccess("初始化", initialized.getResponse());
+        JsonNode response = rnOrderApi.searchStoresByCityCodeAndKeyword(context,
+                initialized.getSession(), location, cityName, keyword);
+        assertSuccess("门店关键词搜索", response);
+        System.out.println("门店关键词搜索成功，返回门店数=" + stores(response).size());
+    }
+
+    /**
      * 校验门店并查询菜单；填写 {@code linkId} 时继续查询商品详情。
      */
     @Test
