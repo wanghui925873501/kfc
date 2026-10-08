@@ -5,7 +5,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
-/** 按 PHHS 抓包协议计算 JSON POST 请求的小写 MD5 签名。 */
+/** 按 PHHS APK 协议计算 GET/POST 请求的小写 MD5 签名。 */
 public final class PhhsRequestSignature {
     /** 阻止创建纯计算工具实例。 */
     private PhhsRequestSignature() { }
@@ -24,6 +24,22 @@ public final class PhhsRequestSignature {
                                   String path, String bodyJson) {
         return md5(clientKey + "\t" + clientSecret + "\t" + timestamp
                 + "\t" + path + "\t\t" + bodyJson);
+    }
+
+    /**
+     * 对按字段名排序的查询串计算 GET 签名。
+     *
+     * @param clientKey PHHS 客户端标识
+     * @param clientSecret PHHS 签名密钥
+     * @param timestamp 毫秒时间戳文本
+     * @param path APK 使用的短签名路径
+     * @param query 按字段名排序、未进行 URL 编码的查询串
+     * @return 小写十六进制签名
+     */
+    public static String signGet(String clientKey, String clientSecret, String timestamp,
+                                 String path, String query) {
+        return md5(clientKey + "\t" + clientSecret + "\t" + timestamp
+                + "\t" + path + "\t" + query);
     }
 
     private static String md5(String source) {

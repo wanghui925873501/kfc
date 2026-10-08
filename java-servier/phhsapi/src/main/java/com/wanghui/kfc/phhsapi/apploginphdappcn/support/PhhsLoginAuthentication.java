@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 
-/** 为必胜客统一登录接口添加 APK 已验证的 KBS 短路径签名。 */
+/** 为必胜客统一登录及风控验证接口添加 APK 对应的 KBS 短路径签名。 */
 @Component
 public class PhhsLoginAuthentication implements UpstreamAuthentication {
     /** 本机 PHHS 签名配置。 */
@@ -42,29 +42,36 @@ public class PhhsLoginAuthentication implements UpstreamAuthentication {
     }
 
     /**
-     * 为短信发送或验证码登录请求添加动态签名头。
+     * 为短信登录和极验风控请求添加动态签名头。
      * @param upstream 固定 PHHS 登录上游
      * @param path 传输路径
-     * @param bodyJson 实际发送的 JSON 字符串
+     * @param bodyJson POST 的 JSON 字符串或 GET 的排序查询串
      * @param headers 待补充的请求头
      */
     @Override
     public void apply(Upstream upstream, String path, String bodyJson, HttpHeaders headers) {
-        if (upstream != PhhsUpstream.APP_LOGIN || bodyJson.isEmpty()) {
+        if (upstream != PhhsUpstream.APP_LOGIN) {
             throw new IllegalStateException("PHHS login authentication is not configured for this request");
         }
         String signPath = switch (path) {
             case "/api/user/sendSmsCode" -> "/user/sendSmsCode";
             case "/api/user/loginBySmsCode" -> "/user/loginBySmsCode";
+            case "/api/svc/startCaptcha" -> "/svc/startCaptcha";
+            case "/api/svc/to/user/sendSmsCode" -> "/svc/to/user/sendSmsCode";
+            case "/api/svc/to/user/loginBySmsCode" -> "/svc/to/user/loginBySmsCode";
             default -> throw new IllegalStateException(
                     "PHHS login authentication is not configured for this path");
         };
+        if (bodyJson.isEmpty() && !"/svc/startCaptcha".equals(signPath)) {
+            throw new IllegalStateException("PHHS login authentication is not configured for this request");
+        }
         String key = properties.requireClientKey();
         String secret = properties.requireClientSecret();
         String timestamp = Long.toString(clock.millis());
         headers.set("kbck", key);
         headers.set("kbcts", timestamp);
-        headers.set("kbsv", PhhsRequestSignature.signPost(
-                key, secret, timestamp, signPath, bodyJson));
+        headers.set("kbsv", "/svc/startCaptcha".equals(signPath)
+                ? PhhsRequestSignature.signGet(key, secret, timestamp, signPath, bodyJson)
+                : PhhsRequestSignature.signPost(key, secret, timestamp, signPath, bodyJson));
     }
 }
