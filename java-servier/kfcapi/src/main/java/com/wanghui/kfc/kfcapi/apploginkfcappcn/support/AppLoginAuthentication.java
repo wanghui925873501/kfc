@@ -30,6 +30,17 @@ public class AppLoginAuthentication implements UpstreamAuthentication {
     }
 
     /**
+     * 仅处理 {@code applogin.kfcapp.cn} 上游。
+     *
+     * @param upstream 目标上游
+     * @return 目标是否为 App 登录服务
+     */
+    @Override
+    public boolean supports(Upstream upstream) {
+        return upstream == Upstream.APP_LOGIN;
+    }
+
+    /**
      * 为已验证的 App 登录接口添加签名头。
      *
      * @param upstream 固定上游服务

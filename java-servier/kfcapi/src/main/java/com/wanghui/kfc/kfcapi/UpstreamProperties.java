@@ -10,8 +10,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Data
 @ConfigurationProperties(prefix = "kfc.upstream")
 public class UpstreamProperties {
+    /** 已验证的 React Native 点餐生产域名。 */
+    private static final URI RN_ORDER_URL = URI.create("https://rnorder.kfc.com.cn");
+
     /** 供 Spring 绑定上游地址配置。 */
-    public UpstreamProperties() { }
+    public UpstreamProperties() {
+        urls.put(Upstream.RN_ORDER, RN_ORDER_URL);
+    }
 
     /** 外部请求总开关；默认关闭，避免未联调时访问生产域名。 */
     private boolean enabled;

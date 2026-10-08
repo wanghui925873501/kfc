@@ -34,6 +34,9 @@ APK 里还有 `m.4008823823.com.cn`、`appcommon.kfc.com.cn` 等候选。上述�
 ## 当前可调用骨架
 
 - `POST /api/v1/catalog/menu` → `CatalogService` → 旧 `OrderingApi.menuList` 仍指向静态候选 `order.kfc.com.cn`，仅作联通样例；真实菜单抓包 URL 属于 `rnorder.kfc.com.cn/preorder-portal`，后续应按该域名重做客户端，当前样例不要用于真实菜单请求。
+- `kfcapi` 已新增 `rnorderkfccomcn` 底层客户端，固定使用真实抓包确认的 `https://rnorder.kfc.com.cn`。当前实现预点餐会话初始化、定位反查城市、城市列表、附近门店、用户常用门店、门店校验、菜单列表和商品详情；尚未接入任何 `server` Controller/Service，UniApp 当前不能调用这些方法。旧 `/api/v1/catalog/menu` 骨架也没有改接新客户端。
+- RN 点餐客户端会从初始化响应保存 `sessionId`、`Set-Cookie` 和 `x-yumc-route-cell`，后续调用复用同一会话。经纬度按抓包 `encodeList` 使用既有 DES 协议加密；签名请求使用去掉 `/store-portal` 或 `/preorder-portal` 的 `/api/...` 短路径。门店查询中抓包未携带 `kb*` 的固定路径保持无签名，未知路径继续拒绝。
+- RN 点餐调用上下文只接收后端已核对的 `deviceId`、`userCode`、上游 ticket、城市和 User-Agent；会话 Cookie、签名头、公共协议字段及加密后的定位均由 `kfcapi` 构造。`RN_ORDER` 默认域名写在 `UpstreamProperties` 中，如确需测试环境覆盖可配置 `kfc.upstream.urls.rn-order`，仍受 HTTPS 和无路径基础地址校验限制。
 - `AppLoginApi.sendSmsCode` 和 `AppLoginApi.loginBySmsCode` 使用已抓包确认的 `https://applogin.kfcapp.cn` 两个固定 POST 路径；请求字段、DES 加密和 POST 签名已本地实现。它们只由后端登录编排服务调用，UniApp 不能直接传入上游路径、请求头或设备字段。Java 使用之前授权抓包的安装上下文曾发送成功，返回 `errCode=0`；新生成的独立虚拟设备上下文尚未完成逐条 Reqable 联调，仍以上游当次响应为准。
 - `LoginApi.validateToken`、`CouponApi.availableCoupons`、`MallApi.productByActivityId`、`PrimeApi.userCard` 是内部封装，**尚未向 uni-app 暴露**。它们的路径/方法来自静态 bundle；完整请求和鉴权仍需联调。会员卡方法的上游 token 应由服务端会话安全取得，不要让 uni-app 任意传入。
 - 上游开关默认关闭。`APP_LOGIN` 仅在配置本机凭据且开启上游开关后可发送；其他候选域名仍会因未配置鉴权而拒绝请求。实际短信发送与登录还需要上层完成当次确认、限流和单次触发锁，不要把密钥或上游 token 提交到仓库或下发给 UniApp。
@@ -92,6 +95,7 @@ APK 里还有 `m.4008823823.com.cn`、`appcommon.kfc.com.cn` 等候选。上述�
 
 ## 后续联调次序
 
-1. 优先根据现有 Reqable 证据实现已确认的域名和接口；静态候选地址逐一核对实际请求的域名、方法、头、参数和响应，区分页面域名与 API 域名。
-2. 实现服务端凭据与签名，确定 uni-app 用户身份映射、会话、限流与错误码。
-3. 再把门店、菜单、优惠券、购物车、下单、支付按业务编排接入 `server`。下单和支付需另做幂等、状态核对和回调验签。
+1. 用授权账号的只读请求逐条验证 `RnOrderApi` 初始化、选店和菜单方法；保存真实 Reqable 证据后再把“离线协议匹配”升级为“Java 线上联调成功”。
+2. 用户确认对外接口方案后，再把门店和菜单按强类型参数接入 `server`；不得复用当前旧的任意 JSON 菜单透传骨架。
+3. 静态候选域名继续逐一核对真实请求的域名、方法、头、参数和响应，区分页面域名与 API 域名。
+4. 购物车、下单和支付另行接入；下单和支付需增加幂等、状态核对、风控交互和回调验签，不能由本轮只读客户端自动扩展。

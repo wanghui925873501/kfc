@@ -1,5 +1,6 @@
 package com.wanghui.kfc.kfcapi;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,5 +47,13 @@ class UpstreamGatewayTest {
         var properties = new Binder(source).bind("kfc.upstream", Bindable.of(UpstreamProperties.class)).get();
         org.assertj.core.api.Assertions.assertThat(properties.url(Upstream.APP_LOGIN))
                 .isEqualTo(URI.create("https://applogin.kfcapp.cn"));
+        assertThat(properties.url(Upstream.RN_ORDER))
+                .isEqualTo(URI.create("https://rnorder.kfc.com.cn"));
+    }
+
+    @Test
+    void providesCapturedRnOrderDomainByDefault() {
+        assertThat(new UpstreamProperties().url(Upstream.RN_ORDER))
+                .isEqualTo(URI.create("https://rnorder.kfc.com.cn"));
     }
 }

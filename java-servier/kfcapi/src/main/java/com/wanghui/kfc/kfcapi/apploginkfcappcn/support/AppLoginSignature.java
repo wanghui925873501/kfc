@@ -1,9 +1,6 @@
 package com.wanghui.kfc.kfcapi.apploginkfcappcn.support;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
+import com.wanghui.kfc.kfcapi.KfcRequestSignature;
 
 /** 依据 APK 中的 GET/POST 规则计算 App 登录上游签名。 */
 final class AppLoginSignature {
@@ -22,8 +19,7 @@ final class AppLoginSignature {
      */
     static String sign(String clientKey, String clientSecret, String timestamp, String path,
                        String bodyJson) {
-        String source = clientKey + "\t" + clientSecret + "\t" + timestamp + "\t" + path + "\t\t" + bodyJson;
-        return md5(source);
+        return KfcRequestSignature.signPost(clientKey, clientSecret, timestamp, path, bodyJson);
     }
 
     /**
@@ -37,15 +33,6 @@ final class AppLoginSignature {
      */
     static String signGet(String clientKey, String clientSecret, String timestamp, String path,
                           String query) {
-        return md5(clientKey + "\t" + clientSecret + "\t" + timestamp + "\t" + path + "\t" + query);
-    }
-
-    private static String md5(String source) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("MD5")
-                    .digest(source.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("MD5 is unavailable", e);
-        }
+        return KfcRequestSignature.signGet(clientKey, clientSecret, timestamp, path, query);
     }
 }
