@@ -127,9 +127,24 @@ public class KfcIdentityService {
             throw new IllegalArgumentException("Upstream login token is missing");
         }
         KfcUser user = userLink.bind(appUserId, phone, data);
-        String sessionId = sessions.issue(new KfcSessionContext(appUserId, user.getId(),
-                installation.getId()));
-        return new IssuedKfcSession(sessionId, user.getId());
+        return issueVerifiedSession(user, installation);
+    }
+
+    /**
+     * 使用数据库中已有且明密文一致的 token 签发本地会话，不请求 KFC 上游。
+     *
+     * @param user 已按手机号确认的 KFC 用户映射
+     * @param installationId 当前手机号绑定的安装标识
+     * @return 不含上游 token 的本地会话句柄
+     * @throws IllegalArgumentException 用户或安装记录缺失时
+     * @throws IllegalStateException token 明密文缺失、损坏或不一致时
+     */
+    public IssuedKfcSession issueStoredSession(KfcUser user, String installationId) {
+        KfcInstallation installation = findInstallation(installationId);
+        if (user == null || user.getId() == null || user.getAppUserId() == null || installation == null) {
+            throw new IllegalArgumentException("Stored login or installation is missing");
+        }
+        return issueVerifiedSession(user, installation);
     }
 
     /**
@@ -169,6 +184,24 @@ public class KfcIdentityService {
     private KfcInstallation findInstallation(String installationId) {
         if (installationId == null || installationId.isBlank()) return null;
         return installations.findByInstallationId(installationId);
+    }
+
+    private IssuedKfcSession issueVerifiedSession(KfcUser user, KfcInstallation installation) {
+        if (StrUtil.hasBlank(user.getTokenPlain(), user.getTokenCiphertext())) {
+            throw new IllegalStateException("Stored upstream token pair is incomplete");
+        }
+        String decrypted;
+        try {
+            decrypted = new String(tokenCipher.decrypt(user.getTokenCiphertext()), StandardCharsets.UTF_8);
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException("Stored upstream token cannot be decrypted", e);
+        }
+        if (!decrypted.equals(user.getTokenPlain())) {
+            throw new IllegalStateException("Stored upstream token pair does not match");
+        }
+        String sessionId = sessions.issue(new KfcSessionContext(user.getAppUserId(), user.getId(),
+                installation.getId()));
+        return new IssuedKfcSession(sessionId, user.getId());
     }
 
     private void requireLength(String value, int max, String name) {

@@ -5,7 +5,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
-/** 依据已验证的 POST 规则计算 App 登录上游签名。 */
+/** 依据 APK 中的 GET/POST 规则计算 App 登录上游签名。 */
 final class AppLoginSignature {
     /** 阻止创建纯计算工具实例。 */
     private AppLoginSignature() { }
@@ -23,6 +23,24 @@ final class AppLoginSignature {
     static String sign(String clientKey, String clientSecret, String timestamp, String path,
                        String bodyJson) {
         String source = clientKey + "\t" + clientSecret + "\t" + timestamp + "\t" + path + "\t\t" + bodyJson;
+        return md5(source);
+    }
+
+    /**
+     * 按 APK 的 GET 签名格式处理按字段名排序的查询串。
+     * @param clientKey 客户端标识
+     * @param clientSecret 本机签名密钥
+     * @param timestamp 毫秒时间戳
+     * @param path APK 中的短路径
+     * @param query 按字段名排序、未进行 URL 编码的查询串
+     * @return 小写十六进制签名
+     */
+    static String signGet(String clientKey, String clientSecret, String timestamp, String path,
+                          String query) {
+        return md5(clientKey + "\t" + clientSecret + "\t" + timestamp + "\t" + path + "\t" + query);
+    }
+
+    private static String md5(String source) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("MD5")
                     .digest(source.getBytes(StandardCharsets.UTF_8)));

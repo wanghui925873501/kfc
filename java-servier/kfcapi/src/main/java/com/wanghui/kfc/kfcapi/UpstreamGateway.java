@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
 import java.util.Collections;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -97,12 +99,33 @@ public class UpstreamGateway {
      * @throws UpstreamException 上游响应错误或连接失败时
      */
     public JsonNode get(Upstream upstream, String path, Map<String, String> query) {
+        return get(upstream, path, query, Collections.emptyMap());
+    }
+
+    /**
+     * 向固定路径发送带客户端业务头和签名查询串的 GET 请求。
+     * @param upstream 上游服务
+     * @param path 固定路径
+     * @param query 查询字段
+     * @param extraHeaders 客户端业务头
+     * @return 上游 JSON 响应
+     * @throws IllegalStateException 上游未启用或鉴权未配置时
+     * @throws UpstreamException 上游响应错误或连接失败时
+     */
+    public JsonNode get(Upstream upstream, String path, Map<String, String> query,
+                        Map<String, String> extraHeaders) {
         var builder = UriComponentsBuilder.fromUri(target(upstream, path));
         query.forEach(builder::queryParam);
         URI target = builder.build().encode().toUri();
+        String signedQuery = new TreeMap<>(query).entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .collect(Collectors.joining("&"));
         try {
             return client.get().uri(target)
-                    .headers(headers -> authentication.apply(upstream, path, "", headers))
+                    .headers(headers -> {
+                        extraHeaders.forEach(headers::set);
+                        authentication.apply(upstream, path, signedQuery, headers);
+                    })
                     .retrieve().onStatus(status -> status.isError(), (request, response) -> {
                         throw new UpstreamException(upstream, response.getStatusCode().value(), "Upstream request failed");
                     }).body(JsonNode.class);

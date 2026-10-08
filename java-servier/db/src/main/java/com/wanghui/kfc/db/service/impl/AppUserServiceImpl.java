@@ -11,4 +11,15 @@ import org.springframework.stereotype.Service;
 public class AppUserServiceImpl extends ServiceImpl<AppUserMapper, AppUser> implements AppUserService {
     /** 供 Spring 创建用户持久化服务。 */
     public AppUserServiceImpl() { }
+
+    /**
+     * 根据手机号 SHA-256 读取唯一的本地用户。
+     *
+     * @param phoneHash 手机号 SHA-256
+     * @return 对应本地用户，不存在时为空
+     */
+    @Override
+    public AppUser findByPhoneHash(String phoneHash) {
+        return lambdaQuery().eq(AppUser::getPhoneHash, phoneHash).one();
+    }
 }

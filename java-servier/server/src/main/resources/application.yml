@@ -22,7 +22,7 @@ mybatis-plus:
       id-type: auto
 kfc:
   upstream:
-    enabled: ${KFC_UPSTREAM_ENABLED:false}
+    enabled: ${KFC_UPSTREAM_ENABLED:true}
     urls:
       ordering: ${KFC_ORDERING_URL:https://order.kfc.com.cn}
       login: ${KFC_LOGIN_URL:https://login.kfc.com.cn}
@@ -35,9 +35,29 @@ kfc:
     client-secret: 'WYjEbpFholuphDuO'
     des-key: 'D963r1wp'
     request-secret-key: 'kfc'
+  captcha3:
+    enabled: ${KFC_CAPTCHA3_ENABLED:false}
+    url: ${KFC_CAPTCHA3_URL:http://127.0.0.1:16254/captcha3}
+    api-key: ${KFC_CAPTCHA3_API_KEY:}
   session:
     ttl: ${KFC_SESSION_TTL:PT8H}
     key-base64: ${KFC_SESSION_KEY_BASE64:}
+  login-client:
+    city-code: ${KFC_LOGIN_CITY_CODE:310000}
+    app-version: ${KFC_LOGIN_APP_VERSION:6.37.0}
+    user-agent: ${KFC_LOGIN_USER_AGENT:Dalvik/2.1.0 (Linux; U; Android 9; Local Test Device Build/LOCAL) SuperKFC Mobile Android Client KFCSuperAPP v6.37.0}
+  login-guard:
+    mutex-ttl: ${KFC_LOGIN_MUTEX_TTL:PT3M}
+    sms-cooldown: ${KFC_LOGIN_SMS_COOLDOWN:PT1M}
+    login-cooldown: ${KFC_LOGIN_VERIFY_COOLDOWN:PT10S}
+  http-log:
+    enabled: ${KFC_HTTP_LOG_ENABLED:true}
+    max-body-length: ${KFC_HTTP_LOG_MAX_BODY_LENGTH:16384}
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:true}
+  swagger-ui:
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:true}
 management:
   endpoints:
     web:

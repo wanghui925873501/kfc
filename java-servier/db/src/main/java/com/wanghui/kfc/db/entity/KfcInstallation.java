@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.ToString;
 
-/** 一次客户端安装的设备上下文；手动 APK 联调记录使用 {@code android-apk-test} 平台标记。 */
+/** 一次客户端安装的设备上下文；真实 APK 与后端虚拟安装通过 platform 区分。 */
 @Data
 @TableName("kfc_installation")
 public class KfcInstallation {
@@ -19,10 +19,10 @@ public class KfcInstallation {
     private Long id;
     /** 首次注册时由后端生成的安装标识。 */
     private String installationId;
-    /** 当前应用的设备标识；仅 {@code android-apk-test} 测试记录可取自本人授权的 APK 抓包。 */
+    /** 当前安装的设备标识；虚拟安装按 APK 首次生成规则建立。 */
     @ToString.Exclude
     private String deviceId;
-    /** 仅在实际 SDK 返回后记录的 TalkingData 标识。 */
+    /** TalkingData 标识；虚拟安装仅实现 Android 9 无硬件标识回退规则。 */
     @ToString.Exclude
     private String tdid;
     /** 仅在推送 SDK 注册后记录的推送标识。 */

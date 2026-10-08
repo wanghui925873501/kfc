@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wanghui.kfc.kfcapi.Upstream;
 import com.wanghui.kfc.kfcapi.UpstreamGateway;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.AppLoginContext;
+import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.CaptchaProof;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.LoginBySmsCodeParam;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.SendSmsCodeParam;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.support.AppLoginCrypto;
@@ -71,5 +72,41 @@ class AppLoginApiTest {
         assertThat(response.toString()).doesNotContain("synthetic-event");
         assertThat(mapper.readValue("{\"errCode\":0}", SendSmsCodeVo.class)
                 .requiresHumanVerification()).isFalse();
+    }
+
+    @Test
+    void sendsValidatedProofOnlyToTheSvcEndpoint() throws Exception {
+        AppLoginProperties properties = new AppLoginProperties();
+        properties.setDesKey("12345678");
+        properties.setRequestSecretKey("test-body-value");
+        UpstreamGateway gateway = mock(UpstreamGateway.class);
+        AppLoginApi api = new AppLoginApi(gateway, new AppLoginCrypto(properties), properties, mapper);
+        AppLoginContext context = new AppLoginContext("test-tdid", "test-device", "", "test-city",
+                "test-channel", "", "test-rcsdcid", "test-rcsav", "test-agent");
+        when(gateway.get(eq(Upstream.APP_LOGIN), eq("/api/svc/startCaptcha"), anyMap(), anyMap()))
+                .thenReturn(mapper.readTree("{\"errCode\":0,\"data\":{\"gt\":\"test-gt\"}}"));
+        when(gateway.post(eq(Upstream.APP_LOGIN), eq("/api/svc/to/user/sendSmsCode"),
+                any(JsonNode.class), anyMap())).thenReturn(mapper.readTree("{\"errCode\":0}"));
+        CaptchaProof proof = new CaptchaProof();
+        proof.setRt(1);
+        proof.setEventId("test-event");
+        proof.setUserid("test-user");
+        proof.setGtServerStatus("1");
+        proof.setGtChallenge("test-challenge");
+        proof.setGtValidate("test-validate");
+        proof.setGtSeccode("test-validate|jordan");
+
+        assertThat(api.startCaptcha(1, context).getData().path("gt").asText()).isEqualTo("test-gt");
+        api.sendSmsCodeVerified(new SendSmsCodeParam("test-value", context), proof);
+        verify(gateway).get(eq(Upstream.APP_LOGIN), eq("/api/svc/startCaptcha"),
+                eq(java.util.Map.of("rt", "1", "type", "MOBILE", "ct", "native")),
+                eq(context.headers()));
+        ArgumentCaptor<JsonNode> body = ArgumentCaptor.forClass(JsonNode.class);
+        verify(gateway).post(eq(Upstream.APP_LOGIN), eq("/api/svc/to/user/sendSmsCode"),
+                body.capture(), eq(context.headers()));
+        assertThat(body.getValue().path("phone").asText()).isNotEqualTo("test-value");
+        assertThat(body.getValue().path("event_id").asText()).isEqualTo("test-event");
+        assertThat(body.getValue().path("rt").asText()).isEqualTo("1");
+        assertThat(body.getValue().path("gtSeccode").asText()).isEqualTo("test-validate|jordan");
     }
 }

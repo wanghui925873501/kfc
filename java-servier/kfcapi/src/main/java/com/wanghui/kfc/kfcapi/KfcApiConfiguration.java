@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
-/** 配置上游 HTTP 客户端及无域名鉴权实现时的默认拒绝策略。 */
+/** 配置带 gzip 响应解码的上游 HTTP 客户端及默认鉴权拒绝策略。 */
 @Configuration
 @EnableConfigurationProperties(UpstreamProperties.class)
 public class KfcApiConfiguration {
@@ -16,7 +16,7 @@ public class KfcApiConfiguration {
     public KfcApiConfiguration() { }
 
     /**
-     * 创建带连接和读取超时的上游 HTTP 客户端。
+     * 创建带超时及 gzip 响应解码的上游 HTTP 客户端。
      *
      * @param builder Spring 提供的客户端构建器
      * @return 上游专用客户端
@@ -26,7 +26,8 @@ public class KfcApiConfiguration {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(3));
         factory.setReadTimeout(Duration.ofSeconds(8));
-        return builder.requestFactory(factory).build();
+        return builder.requestFactory(factory)
+                .requestInterceptor(new GzipResponseInterceptor()).build();
     }
 
     /**

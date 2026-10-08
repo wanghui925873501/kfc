@@ -9,7 +9,7 @@ public interface UpstreamAuthentication {
      *
      * @param upstream 目标上游
      * @param path 固定 API 路径
-     * @param bodyJson 实际发送的 JSON 字符串；GET 请求传入空字符串
+     * @param bodyJson 实际发送的 JSON 字符串；GET 请求传入按字段名排序的查询串
      * @param headers 待补充的请求头
      */
     void apply(Upstream upstream, String path, String bodyJson, HttpHeaders headers);

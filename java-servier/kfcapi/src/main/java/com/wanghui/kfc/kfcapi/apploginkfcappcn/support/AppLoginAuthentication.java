@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 
-/** 只为已验证的 App 登录上游计算 POST 签名，其他域名继续拒绝请求。 */
+/** 为 App 登录上游的已知路径计算 GET/POST 签名，其他域名继续拒绝请求。 */
 @Component
 public class AppLoginAuthentication implements UpstreamAuthentication {
     /** 本机签名配置。 */
@@ -46,9 +46,12 @@ public class AppLoginAuthentication implements UpstreamAuthentication {
         String signPath = switch (path) {
             case "/api/user/sendSmsCode" -> "/user/sendSmsCode";
             case "/api/user/loginBySmsCode" -> "/user/loginBySmsCode";
+            case "/api/svc/startCaptcha" -> "/svc/startCaptcha";
+            case "/api/svc/to/user/sendSmsCode" -> "/svc/to/user/sendSmsCode";
+            case "/api/svc/to/user/loginBySmsCode" -> "/svc/to/user/loginBySmsCode";
             default -> throw new IllegalStateException("App login authentication is not configured for this request");
         };
-        if (bodyJson.isEmpty()) {
+        if (bodyJson.isEmpty() && !"/svc/startCaptcha".equals(signPath)) {
             throw new IllegalStateException("App login authentication is not configured for this request");
         }
         String key = properties.requireClientKey();
@@ -56,6 +59,8 @@ public class AppLoginAuthentication implements UpstreamAuthentication {
         String timestamp = Long.toString(clock.millis());
         headers.set("kbck", key);
         headers.set("kbcts", timestamp);
-        headers.set("kbsv", AppLoginSignature.sign(key, secret, timestamp, signPath, bodyJson));
+        headers.set("kbsv", "/svc/startCaptcha".equals(signPath)
+                ? AppLoginSignature.signGet(key, secret, timestamp, signPath, bodyJson)
+                : AppLoginSignature.sign(key, secret, timestamp, signPath, bodyJson));
     }
 }

@@ -13,7 +13,7 @@ java-servier/
 └─ server/   uni-app 调用的 MVC 接口、内部业务编排、Redis 配置、启动入口
 ```
 
-依赖方向：`server → db/kfcapi/common`，`db/kfcapi → common`。外部接口只从 `server` 暴露；不开放任意 URL 或路径透传。技术版本：JDK 21、Spring Boot 3.5.12、MyBatis-Plus 3.5.17、Lombok 1.18.48、Hutool 5.8.47、Fastjson2 2.0.65、MySQL、Redis、Spring MVC。实体和 DTO 使用成员变量与 Lombok `@Data`，便于逐项设置字段。
+依赖方向：`server → db/kfcapi/common`，`db/kfcapi → common`。外部接口只从 `server` 暴露；不开放任意 URL 或路径透传。技术版本：JDK 21、Spring Boot 3.5.12、Springdoc OpenAPI 2.8.17、MyBatis-Plus 3.5.17、Lombok 1.18.48、Hutool 5.8.47、Fastjson2 2.0.65、MySQL、Redis、Spring MVC。实体和 DTO 使用成员变量与 Lombok `@Data`，便于逐项设置字段。
 
 ## 上游域名证据与包名
 
@@ -34,13 +34,28 @@ APK 里还有 `m.4008823823.com.cn`、`appcommon.kfc.com.cn` 等候选。上述�
 ## 当前可调用骨架
 
 - `POST /api/v1/catalog/menu` → `CatalogService` → 旧 `OrderingApi.menuList` 仍指向静态候选 `order.kfc.com.cn`，仅作联通样例；真实菜单抓包 URL 属于 `rnorder.kfc.com.cn/preorder-portal`，后续应按该域名重做客户端，当前样例不要用于真实菜单请求。
-- `AppLoginApi.sendSmsCode` 和 `AppLoginApi.loginBySmsCode` 使用已抓包确认的 `https://applogin.kfcapp.cn` 两个固定 POST 路径；请求字段、DES 加密和 POST 签名已本地实现。它们目前仅供后端内部调用，未向 uni-app 暴露。Java 手动发送先遇到签名错误，修正后返回 `5910060`，APK 将其作为人工风险验证入口；短信发送成功与 Java 登录仍未验证。发送接口成功响应结构仍待确认。
+- `AppLoginApi.sendSmsCode` 和 `AppLoginApi.loginBySmsCode` 使用已抓包确认的 `https://applogin.kfcapp.cn` 两个固定 POST 路径；请求字段、DES 加密和 POST 签名已本地实现。它们只由后端登录编排服务调用，UniApp 不能直接传入上游路径、请求头或设备字段。Java 使用之前授权抓包的安装上下文曾发送成功，返回 `errCode=0`；新生成的独立虚拟设备上下文尚未完成逐条 Reqable 联调，仍以上游当次响应为准。
 - `LoginApi.validateToken`、`CouponApi.availableCoupons`、`MallApi.productByActivityId`、`PrimeApi.userCard` 是内部封装，**尚未向 uni-app 暴露**。它们的路径/方法来自静态 bundle；完整请求和鉴权仍需联调。会员卡方法的上游 token 应由服务端会话安全取得，不要让 uni-app 任意传入。
 - 上游开关默认关闭。`APP_LOGIN` 仅在配置本机凭据且开启上游开关后可发送；其他候选域名仍会因未配置鉴权而拒绝请求。实际短信发送与登录还需要上层完成当次确认、限流和单次触发锁，不要把密钥或上游 token 提交到仓库或下发给 UniApp。
-- `db/src/main/resources/db/migration/` 保留需手动执行的 V1–V4 SQL：V1 建立 `app_user`，V2 建立 `kfc_installation` 与 `kfc_user`，V3 为手机号和 token 增加明文/密文字段，V4 为三张表及全部字段补充 MySQL 原生 `COMMENT`。新库需按版本顺序各执行一次；已有库先核对当前结构，只执行尚未应用的脚本，尤其不能重复执行 V3 的 `ADD COLUMN`。Java 服务不会自动执行这些 SQL。明文列只供有数据库权限的本机查看，不在日志或对外响应中输出；验证码不落库。
-- `KfcIdentityService` 提供安装注册/更新、登录结果关联、后续请求上下文读取；成功登录时调用方须把同次登录的手机号传给 `recordLoginSuccess`，并与上游响应一起保存。`KfcSessionStore` 只将用户与安装引用加密后放入 Redis，默认本地 TTL 为 8 小时；后续请求从 `kfc_user` 校验并读取持久化 token。客户端只持有随机本地会话标识。此 TTL 不是上游 token 有效期承诺；上游拒绝请求时仍需让用户重新登录或按已验证协议刷新。
+- `db/src/main/resources/db/migration/` 保留需手动执行的 V1–V6 SQL：V1–V4 建立并注释原有三张表，V5 新增 `kfc_phone_installation`，V6 在确认无重复记录后为 `kfc_user(brand, phone_plain)` 增加唯一索引。新库需按版本顺序各执行一次；已有库只执行尚未应用的脚本。Java 服务不会自动执行这些 SQL。手机号明文及同值 DES 密文仅供有数据库权限的本机核对；验证码不落库。
+- `KfcIdentityService` 提供安装注册/更新、登录结果关联、后续请求上下文读取；成功登录时调用方须把同次登录的手机号传给 `recordLoginSuccess`，并与上游响应一起保存。`KfcRequestContextService` 在每次业务请求中按手机号从 `kfc_user` 加载持久化 token、安装与设备信息。`KfcSessionStore` 仍为兼容已有登录响应而签发 Redis 会话，但后续业务接口不依赖它。
 - 独立的 `KFC_SESSION_KEY_BASE64` 是 32 字节密钥的 Base64 编码，本机真实值存于 Git 忽略的根目录 `.env.kfc-reverse.local`。`server` 从相对于 `java-servier` 启动目录的该文件自动导入；其他运行目录可通过进程环境提供同名变量。没有密钥时服务可启动，但签发会话会明确失败。
-- 当前仅完成内部服务与本地测试，尚未增加 UniApp 安装注册页面/接口。后续业务接口必须通过后端会话取用户与安装上下文；城市、位置、版本、动态风控字段按当次请求或当前应用状态取得，不能长期套用抓包值。
+- 登录 Controller 在后端内部按手机号维护安装上下文，没有向 UniApp 开放任意安装字段登记。所有 `/api/v1/**` 请求由 Spring MVC 拦截器读取顶层 `phone`；除标记为登录可选的接口外，必须能加载完整的用户、token、安装与设备上下文后才进入 Controller。城市、位置、版本、动态风控字段按当前后端客户端档案或已验证应用状态取得，不能长期套用抓包值。
+
+## 前端短信登录接口与 OpenAPI
+
+`server` 使用 Springdoc OpenAPI 3 生成接口文档。服务启动后可访问 `/swagger-ui.html`，OpenAPI JSON 位于 `/v3/api-docs`；可分别用 `SPRINGDOC_SWAGGER_UI_ENABLED` 和 `SPRINGDOC_API_DOCS_ENABLED` 关闭。登录 Controller、接口方法以及 `controller/login` 下的 `param`、`dto`、`vo` 已使用 `@Tag`、`@Operation`、`@ApiResponses` 和 `@Schema` 说明。
+
+登录 Controller 的两个请求参数以 `BasePhoneParam` 为父类，手机号为必传顶层字段；后续新增的菜单、门店等参数类也应继承该父类。前端登录与后续接口的完整约定、请求响应示例和错误码见 [前端手机号通行与短信登录对接文档](docs/FRONTEND_PHONE_ACCESS_API.md)。
+
+- `POST /api/v1/login/sms-code/send`：请求体仅接收手机号。锁内先查询 `kfc_user`；已有完整且一致的 token 时不请求 KFC，直接签发本地会话。未登录时才使用该手机号的独占安装上下文请求 KFC 发送验证码。
+- `POST /api/v1/login/sms-code/login`：请求体接收手机号和六位验证码。锁内先查询 `kfc_user`；已有完整且一致的 token 时忽略验证码并直接签发本地会话。未登录时才请求 KFC 验证码登录，成功后创建或复用 `app_user`，保存 `kfc_user` 的手机号和 token 明密文并签发本地会话。
+
+两个接口仍兼容返回本地随机 `sessionId`、绑定的 `installationId` 和本地会话有效期，但前端可以忽略这些字段；后续业务接口始终只携带手机号。接口不返回 KFC token、签名密钥、设备 ID、验证码或图形验证票据。若 token 明密文字段缺一、无法解密、不一致，或同手机号出现重复 KFC 映射，接口会失败关闭，不能把数据损坏当成未登录去调用 KFC。
+
+同手机号的检查与上游调用由 Redis 分布式锁串行执行，并在锁内再次检查登录态。短信发送另有默认一分钟冷却，验证码登录有默认十秒防重复窗口；相应时长可通过 `KFC_LOGIN_MUTEX_TTL`、`KFC_LOGIN_SMS_COOLDOWN`、`KFC_LOGIN_VERIFY_COOLDOWN` 调整。登录客户端城市、版本和 User-Agent 由 `KFC_LOGIN_CITY_CODE`、`KFC_LOGIN_APP_VERSION`、`KFC_LOGIN_USER_AGENT` 在后端配置，前端不能任意覆盖。
+
+所有 `/api/**` 请求默认输出成对的 `[API_REQUEST]`、`[API_RESPONSE]` 日志，包含 `requestId`、方法、URI、脱敏查询参数/JSON、HTTP 状态和耗时；同一 `requestId` 也通过 `X-Request-Id` 响应头返回。手机号仅保留前三后四，验证码、token、会话和设备标识替换为 `***`。可通过 `KFC_HTTP_LOG_ENABLED` 关闭，通过 `KFC_HTTP_LOG_MAX_BODY_LENGTH` 调整脱敏后单段日志的最大字符数。
 
 ## 启动
 
@@ -61,11 +76,19 @@ APK 里还有 `m.4008823823.com.cn`、`appcommon.kfc.com.cn` 等候选。上述�
 
 `server/src/test/java/com/wanghui/kfc/server/api/apploginkfcappcn/AppLoginApiTest.java` 有两个独立方法：`sendSmsCodeTest` 负责发送验证码，`loginBySmsCodeTest` 负责用验证码登录并校验入库。两者都会先查 `kfc_user`，已有对应 token 就跳过请求。手机号写在各自方法内；登录方法内的 `smsCode` 需手动填入当次收到的验证码。
 
-手动测试的安装上下文来自根目录 Git 忽略的 `.env.kfc-reverse.local`。其中 `KFC_TEST_INSTALLATION_ID` 是本地安装记录 ID；`KFC_TEST_DEVICE_ID`、`KFC_TEST_TDID`、`KFC_TEST_APP_VERSION`、`KFC_TEST_CITY_CODE`、`KFC_TEST_USER_AGENT`、`KFC_TEST_RCSDCID`、`KFC_TEST_USER_CODE` 和 `KFC_TEST_PHONE_CIPHERTEXT` 由本机 Reqable 会话 `8600` 提取，没有写进源码。发送测试先确认手机号的本地 DES 密文与抓包一致，再创建或核对对应的 `kfc_installation` 记录；该记录用 `android-apk-test` 平台标记，避免与 UniApp 正常安装混淆。`KFC_TEST_RCSDCID` 是抓包当次的 SDK 值，重用时可能过期；即使请求字段与抓包对齐，也不能保证上游不要求人工验证。验证码登录需要另外设置当次的 `KFC_TEST_LOGIN_RCSDCID`，不能复用发送阶段的值。动态值只留在本机忽略配置，不能提交到 Git。
+手动测试先按手机号 SHA-256 查 `kfc_phone_installation`；首次使用时生成专属 `kfc_installation`，之后复用。设备 ID 按 APK 的首次安装规则生成 UUID 加毫秒时间戳；`tdid` 使用 Android 9 无硬件标识分支的 `3 + MD5(随机 UUID)`，种子也保存于关联表。手机号明文及登录协议 DES 密文成对保存。城市编码、User-Agent、版本号在两个方法内填写为同一客户端档案；若已有记录的档案不同，测试会停止，避免悄悄切换上下文。平台标记为 `android-api28-virtual`，不会选用原先 `android-apk-test` 的抓包记录。`rcs_session_id` 单独保存为当前会话 UUID，需要新会话时显式调用 `startNewRiskSession`。该 UUID 只复现标识形状，并未生成 SDK 的 `postSensorBack` 遥测；上游仍可能要求人工验证。
 
-两个测试方法各自默认带 `@Disabled`，普通 `mvn -s .mvn/settings.xml clean verify` 不会触发真实请求。账号持有人当次授权后，只移除要运行的方法上的 `@Disabled`，运行完成后恢复注解；登录完成后清空 `smsCode`。`KFC_TEST_RUN_ID` 为本机一次手动测试批次的 UUID，短信和登录按手机号、批次和阶段分别创建单次锁，保存在根目录已忽略的 `抓包文件/登录/live-test/`。同一批次重复运行会在请求前停止；已有旧锁保留，不删除。
+两个测试方法各自默认带 `@Disabled`，普通 `mvn -s .mvn/settings.xml clean verify` 不会触发真实请求。先由用户手工执行 V5，账号持有人当次授权后，只移除要运行的方法上的 `@Disabled`，运行完成后恢复注解；登录完成后清空 `smsCode`。方法内的 `runId` 标记本次手动测试批次；短信和登录按手机号、批次和阶段分别创建单次锁，保存在根目录已忽略的 `抓包文件/登录/live-test/`。同一批次重复运行会在请求前停止；已有旧锁保留，不删除。
 
-测试专用 HTTP 拦截器会在本机控制台打印完整请求方法、URL、请求头、原始请求体、响应状态、响应头和原始响应体，并用 Fastjson2 额外打印格式化 JSON。这些报文含个人数据和 token，只在本机查看，不要复制到聊天或提交 Git。`5910060/5910061` 会明确报告需要账号持有人进行人工验证，保留响应 `errData`，本测试不会自动重试或构造验证票据。登录成功且 `errCode=0` 时，测试经 `KfcIdentityService` 把手机号及 token 的明文/密文写入 `kfc_user`，并核对本地会话。Reqable 会话 `8600` 已保存发送成功的响应 `errCode=0`；Java 手动测试仍需以上游当次响应为准。
+测试专用 HTTP 拦截器会在本机控制台打印完整请求方法、URL、请求头、原始请求体、响应状态、响应头和解压后的响应原文，并用 Fastjson2 额外打印格式化 JSON。这些报文含个人数据和 token，只在本机查看，不要复制到聊天或提交 Git。登录成功且 `errCode=0` 时，测试经 `KfcIdentityService` 把手机号及 token 的明文/密文写入 `kfc_user`，并核对本地会话。新生成上下文的真实发送结果待验证，以上游当次响应为准。
+
+### 本机小辉极验三代服务
+
+按用户要求，短信测试和验证码登录测试已通过 `AppLoginCaptchaService` 接入本机服务。默认 `KFC_CAPTCHA3_ENABLED=false`；启动 `小辉极验3代.exe` 并检查本机 `/health` 后，手动设置 `KFC_CAPTCHA3_ENABLED=true`。默认 URL 是 `http://127.0.0.1:16254/captcha3`；跨机器部署时设置 `KFC_CAPTCHA3_URL` 和 `KFC_CAPTCHA3_API_KEY`，密钥只保存在本机忽略配置或环境变量，不写进源码。只有 `5910060/5910061` 会启动验证：先调用 `GET /api/svc/startCaptcha`，再 POST 本机 `/captcha3`，最后调用对应的 `/api/svc/to/user/...` 一次。验证失败、缺字段或超时会停止，绝不循环重试。原测试方法的手机号/批次/阶段锁在首次业务请求前建立。
+
+这三条 `/svc/` 接口来自 APK 静态源码，尚无本域名成功抓包；本机服务和上游请求只经过离线模拟测试。普通构建保留两个 `@Disabled`，不会触发短信或在线挑战。首次真实联调须由账号持有人当次授权，并核对请求和响应；`/captcha3` 的成功结果也不表示上游发码或登录成功，仍以上游最终 `errCode` 为准。
+
+请求继续发送 `Accept-Encoding: gzip`，上游传输层会先解压带 `Content-Encoding: gzip` 的响应，再交给 JSON 转换器。测试控制台仍显示真实响应头，正文打印为解压后的原始 JSON 及格式化 JSON。2026-10-07 一次手动发送收到 HTTP 200 与 gzip 响应，但旧代码把压缩字节当成 JSON，无法确认该次业务 `errCode`；不能根据旧的 `Upstream connection failed` 断言短信未发送，核对手机后再决定是否需要新一批次的当次授权测试。
 
 ## 后续联调次序
 

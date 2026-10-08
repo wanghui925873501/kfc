@@ -7,29 +7,31 @@ import com.alibaba.fastjson2.JSONException;
 import com.alibaba.fastjson2.JSONWriter;
 import com.wanghui.kfc.db.entity.AppUser;
 import com.wanghui.kfc.db.entity.KfcInstallation;
+import com.wanghui.kfc.db.entity.KfcPhoneInstallation;
 import com.wanghui.kfc.db.entity.KfcUser;
 import com.wanghui.kfc.db.service.AppUserService;
 import com.wanghui.kfc.db.service.KfcInstallationService;
 import com.wanghui.kfc.db.service.KfcUserService;
-import com.wanghui.kfc.kfcapi.apploginkfcappcn.api.AppLoginApi;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.AppLoginContext;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.LoginBySmsCodeParam;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.SendSmsCodeParam;
-import com.wanghui.kfc.kfcapi.apploginkfcappcn.support.AppLoginCrypto;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.vo.LoginBySmsCodeVo;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.vo.SendSmsCodeVo;
+import com.wanghui.kfc.kfcapi.GzipResponseInterceptor;
 import com.wanghui.kfc.server.identity.IssuedKfcSession;
 import com.wanghui.kfc.server.identity.KfcIdentityService;
+import com.wanghui.kfc.server.identity.KfcPhoneDeviceService;
+import com.wanghui.kfc.server.login.AppLoginCaptchaService;
 import jakarta.annotation.Resource;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.Objects;
 import java.util.Properties;
+import java.util.zip.GZIPInputStream;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -37,6 +39,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.client.BufferingClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -51,12 +54,12 @@ import org.springframework.web.client.RestClient;
 @SpringBootTest(properties = "kfc.upstream.enabled=true")
 @Import(AppLoginApiTest.PacketLoggingConfiguration.class)
 public class AppLoginApiTest {
-    /** 已抓包确认的上游短信登录客户端。 */
-    @Resource private AppLoginApi appLoginApi;
-    /** 核对测试手机号与本机抓包密文是否属于同一账号。 */
-    @Resource private AppLoginCrypto crypto;
+    /** 对初次上游响应和最多一次验证补发进行编排。 */
+    @Resource private AppLoginCaptchaService captchaLogin;
     /** 登录身份和本地会话编排入口。 */
     @Resource private KfcIdentityService identityService;
+    /** 按手机号生成并复用独占虚拟安装。 */
+    @Resource private KfcPhoneDeviceService phoneDevices;
     /** 本地账号持久化入口。 */
     @Resource private AppUserService appUsers;
     /** 安装记录持久化入口。 */
@@ -65,35 +68,29 @@ public class AppLoginApiTest {
     @Resource private KfcUserService kfcUsers;
 
     /**
-     * 本地无 token 时，用本机授权抓包配置登记测试安装并发送一次验证码。
+     * 本地无 token 时，为授权手机号复用独占安装并发送一次验证码。
      * @throws IOException 本机单次触发锁无法建立时
      */
     @Test
     @Disabled("当次授权发送短信后，单独移除此方法的注解运行")
     void sendSmsCodeTest() throws IOException {
-        String phone = "18229301217";
+        String phone = "18169202695";
+        if (!phone.matches("1[0-9]{10}")) throw new IllegalArgumentException("先填写本人授权的手机号");
         String phoneHash = SecureUtil.sha256(phone);
         if (hasStoredToken(phone)) {
             System.out.println("kfc_user 已有 token，跳过发送验证码");
             return;
         }
-        Properties values = localProperties();
-        String cityCode = requiredLocal(values, "KFC_TEST_CITY_CODE");
-        String userAgent = requiredLocal(values, "KFC_TEST_USER_AGENT");
-        String rcsdcid = requiredLocal(values, "KFC_TEST_RCSDCID");
-        String userCode = values.getProperty("KFC_TEST_USER_CODE", "");
-        String runId = requiredLocal(values, "KFC_TEST_RUN_ID");
-        requireCapturedPhone(values, phone);
-        AppLoginContext context = testContext(capturedInstallation(values),
-                cityCode, userAgent, rcsdcid, userCode);
+        String runId = "virtual-installation-20261007-v1";
+        KfcPhoneInstallation binding = testBinding(phone);
+        AppLoginContext context = phoneDevices.loginContext(binding, "");
         lock(phoneHash, "send", runId);
         SendSmsCodeParam param = new SendSmsCodeParam();
         param.setPhone(phone);
         param.setContext(context);
-        SendSmsCodeVo response = appLoginApi.sendSmsCode(param);
+        SendSmsCodeVo response = captchaLogin.sendSmsCode(param);
         if (response != null && response.requiresHumanVerification()) {
-            throw new IllegalStateException("上游要求人工验证，errCode=" + response.getErrCode()
-                    + "；请由账号持有人在官方客户端完成，本测试不会自动重试");
+            throw new IllegalStateException("验证后上游仍要求图形验证，errCode=" + response.getErrCode());
         }
         if (response == null || response.getErrCode() == null || response.getErrCode() != 0) {
             throw new IllegalStateException("短信响应未确认成功，请查看上方完整响应报文");
@@ -107,29 +104,25 @@ public class AppLoginApiTest {
     @Test
     @Disabled("收到验证码并获得当次登录授权后，单独移除此方法的注解运行")
     void loginBySmsCodeTest() throws IOException {
-        String phone = "18229301217";
-        String smsCode = "";
+        String phone = "18169202695";
+        String smsCode = "034684";
+        if (!phone.matches("1[0-9]{10}")) throw new IllegalArgumentException("先填写本人授权的手机号");
         String phoneHash = SecureUtil.sha256(phone);
         if (hasStoredToken(phone)) {
             System.out.println("kfc_user 已有 token，跳过验证码登录");
             return;
         }
         if (!smsCode.matches("[0-9]{6}")) throw new IllegalArgumentException("验证码需要六位数字");
-        Properties values = localProperties();
-        String cityCode = requiredLocal(values, "KFC_TEST_CITY_CODE");
-        String userAgent = requiredLocal(values, "KFC_TEST_USER_AGENT");
-        String rcsdcid = requiredLocal(values, "KFC_TEST_LOGIN_RCSDCID");
-        String userCode = values.getProperty("KFC_TEST_USER_CODE", "");
-        String runId = requiredLocal(values, "KFC_TEST_RUN_ID");
-        requireCapturedPhone(values, phone);
-        KfcInstallation installation = capturedInstallation(values);
-        AppLoginContext context = testContext(installation, cityCode, userAgent, rcsdcid, userCode);
+        String runId = "virtual-installation-20261007-v1";
+        KfcPhoneInstallation binding = testBinding(phone);
+        KfcInstallation installation = installations.findByInstallationId(binding.getInstallationId());
+        AppLoginContext context = phoneDevices.loginContext(binding, "");
         lock(phoneHash, "login", runId);
         LoginBySmsCodeParam param = new LoginBySmsCodeParam();
         param.setPhone(phone);
         param.setSmsCode(smsCode);
         param.setContext(context);
-        LoginBySmsCodeVo response = appLoginApi.loginBySmsCode(param);
+        LoginBySmsCodeVo response = captchaLogin.loginBySmsCode(param);
         if (response == null || response.getErrCode() == null || response.getErrCode() != 0) {
             throw new IllegalStateException("登录未成功，请查看上方完整响应报文");
         }
@@ -157,66 +150,10 @@ public class AppLoginApiTest {
                 && StrUtil.isNotBlank(existing.getTokenCiphertext());
     }
 
-    private KfcInstallation capturedInstallation(Properties values) {
-        String installationId = requiredLocal(values, "KFC_TEST_INSTALLATION_ID");
-        String deviceId = requiredLocal(values, "KFC_TEST_DEVICE_ID");
-        String tdid = requiredLocal(values, "KFC_TEST_TDID");
-        String appVersion = requiredLocal(values, "KFC_TEST_APP_VERSION");
-        String jpushRegId = values.getProperty("KFC_TEST_JPUSH_REG_ID", "");
-        KfcInstallation installation = installations.findByInstallationId(installationId);
-        if (installation == null) {
-            installation = new KfcInstallation();
-            installation.setInstallationId(installationId);
-            installation.setDeviceId(deviceId);
-            installation.setTdid(tdid);
-            installation.setJpushRegId(jpushRegId);
-            installation.setPlatform("android-apk-test");
-            installation.setAppVersion(appVersion);
-            installation.setCreatedAt(LocalDateTime.now());
-            installation.setLastSeenAt(LocalDateTime.now());
-            if (!installations.save(installation)) {
-                throw new IllegalStateException("本机授权测试安装记录保存失败");
-            }
-        } else if (!Objects.equals(installation.getDeviceId(), deviceId)
-                || !Objects.equals(installation.getTdid(), tdid)
-                || !Objects.equals(installation.getAppVersion(), appVersion)
-                || !"android-apk-test".equalsIgnoreCase(installation.getPlatform())) {
-            throw new IllegalStateException("已登记安装记录与本机抓包设备上下文不一致");
-        }
-        return installation;
-    }
-
-    private AppLoginContext testContext(KfcInstallation installation, String cityCode,
-                                        String userAgent, String rcsdcid, String userCode) {
-        if (StrUtil.isBlank(cityCode) || StrUtil.isBlank(userAgent) || StrUtil.isBlank(rcsdcid)) {
-            throw new IllegalStateException("先填写当前客户端的城市编码、User-Agent 和当次 SDK rcsdcid");
-        }
-        AppLoginContext context = new AppLoginContext();
-        context.setDeviceId(installation.getDeviceId());
-        context.setTdid(installation.getTdid());
-        context.setJPushRegId(StrUtil.nullToEmpty(installation.getJpushRegId()));
-        context.setCityCode(cityCode);
-        context.setChannel("app");
-        context.setUserCode(userCode);
-        context.setRcsdcid(rcsdcid);
-        context.setRcsav(installation.getAppVersion());
-        context.setUserAgent(userAgent);
-        context.requireComplete();
-        return context;
-    }
-
-    private static String requiredLocal(Properties values, String key) {
-        String value = values.getProperty(key);
-        if (StrUtil.isBlank(value)) {
-            throw new IllegalStateException("本机忽略配置缺少 " + key);
-        }
-        return value;
-    }
-
-    private void requireCapturedPhone(Properties values, String phone) {
-        if (!crypto.encrypt(phone).equals(requiredLocal(values, "KFC_TEST_PHONE_CIPHERTEXT"))) {
-            throw new IllegalStateException("测试手机号与本机抓包中的加密手机号不一致");
-        }
+    private KfcPhoneInstallation testBinding(String phone) {
+        return phoneDevices.getOrCreate(phone, "310000",
+                "Dalvik/2.1.0 (Linux; U; Android 9; Local Test Device Build/LOCAL) "
+                        + "SuperKFC Mobile Android Client KFCSuperAPP v6.37.0", "6.37.0");
     }
 
     private AppUser findOrCreateUser(String phoneHash) {
@@ -232,8 +169,8 @@ public class AppLoginApiTest {
     }
 
     private void lock(String phoneHash, String phase, String runId) throws IOException {
-        if (!runId.matches("[0-9a-fA-F-]{36}")) {
-            throw new IllegalStateException("KFC_TEST_RUN_ID 需要是本机生成的 UUID");
+        if (!runId.matches("[a-zA-Z0-9_-]{1,64}")) {
+            throw new IllegalStateException("测试批次标识只能使用字母、数字、下划线和短横线");
         }
         Path directory = projectRoot().resolve(Path.of("抓包文件", "登录", "live-test"));
         Files.createDirectories(directory);
@@ -254,7 +191,7 @@ public class AppLoginApiTest {
     }
 
     /**
-     * 为手动测试注入本机密钥；设备上下文由本机忽略配置读取。
+     * 为手动测试注入本机密钥；设备上下文按手机号从数据库读取。
      * @param registry Spring 测试属性注册器
      */
     @DynamicPropertySource
@@ -292,6 +229,7 @@ public class AppLoginApiTest {
             transport.setConnectTimeout(Duration.ofSeconds(3));
             transport.setReadTimeout(Duration.ofSeconds(8));
             return builder.requestFactory(new BufferingClientHttpRequestFactory(transport))
+                    .requestInterceptor(new GzipResponseInterceptor())
                     .requestInterceptor((request, body, execution) -> {
                         System.out.println("===== HTTP REQUEST " + request.getMethod()
                                 + " " + request.getURI() + " =====");
@@ -302,9 +240,19 @@ public class AppLoginApiTest {
                         System.out.println("===== HTTP RESPONSE " + response.getStatusCode() + " =====");
                         response.getHeaders().forEach((name, values) ->
                                 System.out.println(name + ": " + String.join(", ", values)));
-                        printBody(response.getBody().readAllBytes());
+                        printBody(decodedBody(response));
                         return response;
                     }).build();
+        }
+
+        private static byte[] decodedBody(ClientHttpResponse response) throws IOException {
+            byte[] wireBody = response.getBody().readAllBytes();
+            if (!"gzip".equalsIgnoreCase(response.getHeaders().getFirst(HttpHeaders.CONTENT_ENCODING))) {
+                return wireBody;
+            }
+            try (GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(wireBody))) {
+                return gzip.readAllBytes();
+            }
         }
 
         private static void printBody(byte[] body) {
