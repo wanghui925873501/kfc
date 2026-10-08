@@ -34,7 +34,7 @@ APK 里还有 `m.4008823823.com.cn`、`appcommon.kfc.com.cn` 等候选。上述�
 ## 当前可调用骨架
 
 - `POST /api/v1/catalog/menu` → `CatalogService` → 旧 `OrderingApi.menuList` 仍指向静态候选 `order.kfc.com.cn`，仅作联通样例；真实菜单抓包 URL 属于 `rnorder.kfc.com.cn/preorder-portal`，后续应按该域名重做客户端，当前样例不要用于真实菜单请求。
-- `kfcapi` 已新增 `rnorderkfccomcn` 底层客户端，固定使用真实抓包确认的 `https://rnorder.kfc.com.cn`。当前实现预点餐会话初始化、定位反查城市、城市列表、附近门店、用户常用门店、门店校验、菜单列表和商品详情；尚未接入任何 `server` Controller/Service，UniApp 当前不能调用这些方法。旧 `/api/v1/catalog/menu` 骨架也没有改接新客户端。
+- `kfcapi` 的 `rnorderkfccomcn` 底层客户端固定使用真实抓包确认的 `https://rnorder.kfc.com.cn`，实现预点餐会话初始化、定位反查城市、城市列表、附近门店、用户常用门店、门店校验、菜单列表和商品详情。`server` 已通过 `/api/v1/rn-order/**` 暴露强类型只读浏览接口；旧 `/api/v1/catalog/menu` 骨架没有改接新客户端。
 - RN 点餐客户端会从初始化响应保存 `sessionId`、`Set-Cookie` 和 `x-yumc-route-cell`，后续调用复用同一会话。经纬度按抓包 `encodeList` 使用既有 DES 协议加密；签名请求使用去掉 `/store-portal` 或 `/preorder-portal` 的 `/api/...` 短路径。门店查询中抓包未携带 `kb*` 的固定路径保持无签名，未知路径继续拒绝。
 - RN 点餐调用上下文只接收后端已核对的 `deviceId`、`userCode`、上游 ticket、城市和 User-Agent；会话 Cookie、签名头、公共协议字段及加密后的定位均由 `kfcapi` 构造。`RN_ORDER` 默认域名写在 `UpstreamProperties` 中，如确需测试环境覆盖可配置 `kfc.upstream.urls.rn-order`，仍受 HTTPS 和无路径基础地址校验限制。
 - `AppLoginApi.sendSmsCode` 和 `AppLoginApi.loginBySmsCode` 使用已抓包确认的 `https://applogin.kfcapp.cn` 两个固定 POST 路径；请求字段、DES 加密和 POST 签名已本地实现。它们只由后端登录编排服务调用，UniApp 不能直接传入上游路径、请求头或设备字段。Java 使用之前授权抓包的安装上下文曾发送成功，返回 `errCode=0`；新生成的独立虚拟设备上下文尚未完成逐条 Reqable 联调，仍以上游当次响应为准。
@@ -50,6 +50,8 @@ APK 里还有 `m.4008823823.com.cn`、`appcommon.kfc.com.cn` 等候选。上述�
 `server` 使用 Springdoc OpenAPI 3 生成接口文档。服务启动后可访问 `/swagger-ui.html`，OpenAPI JSON 位于 `/v3/api-docs`；可分别用 `SPRINGDOC_SWAGGER_UI_ENABLED` 和 `SPRINGDOC_API_DOCS_ENABLED` 关闭。登录 Controller、接口方法以及 `controller/login` 下的 `param`、`dto`、`vo` 已使用 `@Tag`、`@Operation`、`@ApiResponses` 和 `@Schema` 说明。
 
 登录 Controller 的两个请求参数以 `BasePhoneParam` 为父类，手机号为必传顶层字段；后续新增的菜单、门店等参数类也应继承该父类。前端登录与后续接口的完整约定、请求响应示例和错误码见 [前端手机号通行与短信登录对接文档](docs/FRONTEND_PHONE_ACCESS_API.md)。
+
+RN 点餐浏览接口为 `POST /api/v1/rn-order/flows`、`/stores`、`/menu` 和 `/products/detail`。初始化返回与手机号绑定的随机 `flowId`，上游会话使用独立密钥加密后仅存 Redis，默认空闲 15 分钟；响应只包含页面所需白名单字段。完整前端契约见 [前端 RN 点餐浏览接口](docs/FRONTEND_RN_ORDER_API.md)。
 
 - `POST /api/v1/login/sms-code/send`：请求体仅接收手机号。锁内先查询 `kfc_user`；已有完整且一致的 token 时不请求 KFC，直接签发本地会话。未登录时才使用该手机号的独占安装上下文请求 KFC 发送验证码。
 - `POST /api/v1/login/sms-code/login`：请求体接收手机号和六位验证码。锁内先查询 `kfc_user`；已有完整且一致的 token 时忽略验证码并直接签发本地会话。未登录时才请求 KFC 验证码登录，成功后创建或复用 `app_user`，保存 `kfc_user` 的手机号和 token 明密文并签发本地会话。
@@ -89,7 +91,7 @@ APK 里还有 `m.4008823823.com.cn`、`appcommon.kfc.com.cn` 等候选。上述�
 
 `server/src/test/java/com/wanghui/kfc/server/api/rnorderkfccomcn/RnOrderApiTest.java` 按 `AppLoginApiTest` 的手工测试模式提供两个独立方法。`storeQueriesTest` 验证初始化、定位城市、城市列表、附近门店和账号常用门店；`menuAndDetailTest` 验证门店、菜单，并在填写 `linkId` 后继续验证商品详情。测试从数据库按手机号读取已登录账号的 token、安装和客户端档案，不在源码中填写这些敏感字段。
 
-两个方法默认带 `@Disabled`，普通构建不会访问 KFC。运行前在目标方法内填写本人授权且已完成登录的手机号，并按实际测试位置调整经纬度和城市编码；菜单测试的 `storeCode` 留空时会选择附近门店的第一项，`linkId` 留空时只验证到菜单。只移除本次要运行的方法上的 `@Disabled`，从 `java-servier` 目录执行以下对应命令，运行完成后恢复注解：
+两个方法默认带 `@Disabled`，普通构建不会访问 KFC。运行前在根目录忽略文件 `.env.kfc-reverse.local` 配置 `KFC_RN_ORDER_TEST_PHONE`、`KFC_RN_ORDER_TEST_LATITUDE`、`KFC_RN_ORDER_TEST_LONGITUDE` 和 `KFC_RN_ORDER_TEST_GB_CITY_CODE`；菜单测试可选配置 `KFC_RN_ORDER_TEST_STORE_CODE` 和 `KFC_RN_ORDER_TEST_LINK_ID`。门店编码为空时会选择附近门店第一项，商品标识为空时只验证到菜单。只移除本次要运行的方法上的 `@Disabled`，从 `java-servier` 目录执行以下对应命令，运行完成后恢复注解：
 
 ```powershell
 mvn -s .mvn/settings.xml -pl server -am "-Dtest=RnOrderApiTest#storeQueriesTest" -Dsurefire.failIfNoSpecifiedTests=false test
@@ -108,7 +110,7 @@ mvn -s .mvn/settings.xml -pl server -am "-Dtest=RnOrderApiTest#menuAndDetailTest
 
 ## 后续联调次序
 
-1. 用授权账号的只读请求逐条验证 `RnOrderApi` 初始化、选店和菜单方法；保存真实 Reqable 证据后再把“离线协议匹配”升级为“Java 线上联调成功”。
-2. 用户确认对外接口方案后，再把门店和菜单按强类型参数接入 `server`；不得复用当前旧的任意 JSON 菜单透传骨架。
+1. 用授权账号的只读请求逐条验证 `RnOrderApi` 初始化、选店和菜单方法，并保存真实 Reqable 证据；当前首批方法已经 Java 线上联调成功。
+2. 在 UniApp 按 `docs/FRONTEND_RN_ORDER_API.md` 接入已完成的强类型接口；关键词搜索在补齐底层方法前保持禁用或明确未开放。
 3. 静态候选域名继续逐一核对真实请求的域名、方法、头、参数和响应，区分页面域名与 API 域名。
 4. 购物车、下单和支付另行接入；下单和支付需增加幂等、状态核对、风控交互和回调验签，不能由本轮只读客户端自动扩展。

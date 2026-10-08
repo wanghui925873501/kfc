@@ -50,6 +50,8 @@ kfc:
     mutex-ttl: ${KFC_LOGIN_MUTEX_TTL:PT3M}
     sms-cooldown: ${KFC_LOGIN_SMS_COOLDOWN:PT1M}
     login-cooldown: ${KFC_LOGIN_VERIFY_COOLDOWN:PT10S}
+  rn-order:
+    flow-ttl: ${KFC_RN_ORDER_FLOW_TTL:PT15M}
   http-log:
     enabled: ${KFC_HTTP_LOG_ENABLED:true}
     max-body-length: ${KFC_HTTP_LOG_MAX_BODY_LENGTH:16384}

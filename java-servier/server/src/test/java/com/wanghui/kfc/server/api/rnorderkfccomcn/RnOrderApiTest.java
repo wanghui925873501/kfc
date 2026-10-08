@@ -44,7 +44,7 @@ public class RnOrderApiTest {
     @Test
     @Disabled("填写本人授权手机号后，单独移除此方法的注解运行")
     void storeQueriesTest() {
-        String phone = "18229301217";
+        String phone = requiredLocalValue("KFC_RN_ORDER_TEST_PHONE");
         RnOrderLocation location = location("31.2304", "121.4737", "310000");
         RnOrderContext context = context(phone);
 
@@ -76,11 +76,12 @@ public class RnOrderApiTest {
     @Test
     @Disabled("填写本人授权手机号后，单独移除此方法的注解运行")
     void menuAndDetailTest() {
-        String phone = "18229301217";
-        String storeCode = "CHS170";
-        String linkId = "38846";
-        // 郴州市
-        RnOrderLocation location = location("25.7728", "113.014", "431000");
+        String phone = requiredLocalValue("KFC_RN_ORDER_TEST_PHONE");
+        String storeCode = localValue("KFC_RN_ORDER_TEST_STORE_CODE");
+        String linkId = localValue("KFC_RN_ORDER_TEST_LINK_ID");
+        RnOrderLocation location = location(requiredLocalValue("KFC_RN_ORDER_TEST_LATITUDE"),
+                requiredLocalValue("KFC_RN_ORDER_TEST_LONGITUDE"),
+                requiredLocalValue("KFC_RN_ORDER_TEST_GB_CITY_CODE"));
         RnOrderContext context = context(phone);
 
         RnOrderInitResult initialized = rnOrderApi.initializePreorder(context, location);
@@ -206,6 +207,18 @@ public class RnOrderApiTest {
             throw new IllegalStateException("无法读取本机忽略配置", e);
         }
         return values;
+    }
+
+    private static String requiredLocalValue(String name) {
+        String value = localValue(name);
+        if (StrUtil.isBlank(value)) {
+            throw new IllegalStateException("本机忽略配置缺少 " + name);
+        }
+        return value;
+    }
+
+    private static String localValue(String name) {
+        return localProperties().getProperty(name, "").trim();
     }
 
     private static Path projectRoot() {

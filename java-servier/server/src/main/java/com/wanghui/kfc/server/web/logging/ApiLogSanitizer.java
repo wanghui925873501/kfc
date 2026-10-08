@@ -87,6 +87,7 @@ public class ApiLogSanitizer {
                 || normalized.contains("password") || normalized.equals("pwd")
                 || normalized.contains("ciphertext") || normalized.equals("authorization")
                 || normalized.equals("cookie") || normalized.equals("sessionid")
+                || normalized.equals("flowid")
                 || normalized.equals("installationid") || normalized.equals("deviceid")
                 || normalized.equals("tdid") || normalized.equals("rcsdcid")
                 || normalized.equals("apikey");

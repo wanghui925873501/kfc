@@ -3,6 +3,7 @@ package com.wanghui.kfc.server.web;
 import com.wanghui.kfc.common.ApiResponse;
 import com.wanghui.kfc.kfcapi.UpstreamException;
 import com.wanghui.kfc.server.login.KfcLoginException;
+import com.wanghui.kfc.server.rnorder.RnOrderException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -46,6 +47,17 @@ public class ApiExceptionHandler {
      */
     @ExceptionHandler(KfcLoginException.class)
     public ResponseEntity<ApiResponse<Void>> login(KfcLoginException e) {
+        return ResponseEntity.status(e.getStatus()).body(ApiResponse.error(e.getCode(), e.getMessage()));
+    }
+
+    /**
+     * 处理已经脱敏并带稳定业务码的 RN 点餐异常。
+     *
+     * @param e RN 点餐业务异常
+     * @return 异常指定的安全 HTTP 响应
+     */
+    @ExceptionHandler(RnOrderException.class)
+    public ResponseEntity<ApiResponse<Void>> rnOrder(RnOrderException e) {
         return ResponseEntity.status(e.getStatus()).body(ApiResponse.error(e.getCode(), e.getMessage()));
     }
 

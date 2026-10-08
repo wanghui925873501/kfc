@@ -14,12 +14,13 @@ class ApiLogSanitizerTest {
     @Test
     void sanitizesSensitiveJsonFields() {
         String sanitized = sanitizer.sanitizeJson("""
-                {"phone":"13800000000","smsCode":"012345","data":{"token":"token-value",
-                "installationId":"install-value"},"code":"OK"}
+                {"phone":"13800000000","smsCode":"012345","flowId":"flow-value",
+                "data":{"token":"token-value","installationId":"install-value"},"code":"OK"}
                 """, 16384);
 
         assertThat(sanitized).contains("138****0000", "\"code\":\"OK\"");
-        assertThat(sanitized).doesNotContain("13800000000", "012345", "token-value", "install-value");
+        assertThat(sanitized).doesNotContain("13800000000", "012345", "flow-value",
+                "token-value", "install-value");
     }
 
     /** 查询参数中的手机号和敏感标识按同一规则脱敏。 */
