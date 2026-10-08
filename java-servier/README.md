@@ -85,6 +85,19 @@ APK 里还有 `m.4008823823.com.cn`、`appcommon.kfc.com.cn` 等候选。上述�
 
 测试专用 HTTP 拦截器会在本机控制台打印完整请求方法、URL、请求头、原始请求体、响应状态、响应头和解压后的响应原文，并用 Fastjson2 额外打印格式化 JSON。这些报文含个人数据和 token，只在本机查看，不要复制到聊天或提交 Git。登录成功且 `errCode=0` 时，测试经 `KfcIdentityService` 把手机号及 token 的明文/密文写入 `kfc_user`，并核对本地会话。新生成上下文的真实发送结果待验证，以上游当次响应为准。
 
+## 手动 RN 选店与菜单测试
+
+`server/src/test/java/com/wanghui/kfc/server/api/rnorderkfccomcn/RnOrderApiTest.java` 按 `AppLoginApiTest` 的手工测试模式提供两个独立方法。`storeQueriesTest` 验证初始化、定位城市、城市列表、附近门店和账号常用门店；`menuAndDetailTest` 验证门店、菜单，并在填写 `linkId` 后继续验证商品详情。测试从数据库按手机号读取已登录账号的 token、安装和客户端档案，不在源码中填写这些敏感字段。
+
+两个方法默认带 `@Disabled`，普通构建不会访问 KFC。运行前在目标方法内填写本人授权且已完成登录的手机号，并按实际测试位置调整经纬度和城市编码；菜单测试的 `storeCode` 留空时会选择附近门店的第一项，`linkId` 留空时只验证到菜单。只移除本次要运行的方法上的 `@Disabled`，从 `java-servier` 目录执行以下对应命令，运行完成后恢复注解：
+
+```powershell
+mvn -s .mvn/settings.xml -pl server -am "-Dtest=RnOrderApiTest#storeQueriesTest" -Dsurefire.failIfNoSpecifiedTests=false test
+mvn -s .mvn/settings.xml -pl server -am "-Dtest=RnOrderApiTest#menuAndDetailTest" -Dsurefire.failIfNoSpecifiedTests=false test
+```
+
+测试控制台只打印成功阶段、数据字段名和门店数量，不打印 token、Cookie、设备标识或完整响应。完整请求和响应应在本机 Reqable 查看，并按工作区规则归档到 `抓包文件/<阶段>/` 后执行一致性检查；敏感抓包不得复制到聊天或提交 Git。
+
 ### 本机小辉极验三代服务
 
 按用户要求，短信测试和验证码登录测试已通过 `AppLoginCaptchaService` 接入本机服务。默认 `KFC_CAPTCHA3_ENABLED=false`；启动 `小辉极验3代.exe` 并检查本机 `/health` 后，手动设置 `KFC_CAPTCHA3_ENABLED=true`。默认 URL 是 `http://127.0.0.1:16254/captcha3`；跨机器部署时设置 `KFC_CAPTCHA3_URL` 和 `KFC_CAPTCHA3_API_KEY`，密钥只保存在本机忽略配置或环境变量，不写进源码。只有 `5910060/5910061` 会启动验证：先调用 `GET /api/svc/startCaptcha`，再 POST 本机 `/captcha3`，最后调用对应的 `/api/svc/to/user/...` 一次。验证失败、缺字段或超时会停止，绝不循环重试。原测试方法的手机号/批次/阶段锁在首次业务请求前建立。
