@@ -1,7 +1,7 @@
 package com.wanghui.kfc.kfcapi.rnorderkfccomcn.param;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.wanghui.kfc.kfcapi.UpstreamResponse;
+import com.wanghui.kfc.basicapi.UpstreamResponse;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;

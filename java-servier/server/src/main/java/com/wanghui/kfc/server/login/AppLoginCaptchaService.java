@@ -2,13 +2,13 @@ package com.wanghui.kfc.server.login;
 
 import cn.hutool.core.util.StrUtil;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.wanghui.kfc.basicapi.captcha3.Captcha3Client;
+import com.wanghui.kfc.basicapi.captcha3.Captcha3Result;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.api.AppLoginApi;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.AppLoginContext;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.CaptchaProof;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.LoginBySmsCodeParam;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.SendSmsCodeParam;
-import com.wanghui.kfc.kfcapi.apploginkfcappcn.support.Captcha3Client;
-import com.wanghui.kfc.kfcapi.apploginkfcappcn.vo.Captcha3ResultVo;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.vo.LoginBySmsCodeVo;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.vo.SendSmsCodeVo;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.vo.StartCaptchaVo;
@@ -68,7 +68,7 @@ public class AppLoginCaptchaService {
                         data.path("gtServerStatus").asText(""))) {
             throw new IllegalStateException("上游验证注册数据不完整");
         }
-        Captcha3ResultVo result = captchaClient.solve(data.path("gt").asText(),
+        Captcha3Result result = captchaClient.solve(data.path("gt").asText(),
                 data.path("challenge").asText());
         CaptchaProof proof = new CaptchaProof();
         proof.setRt(rt);

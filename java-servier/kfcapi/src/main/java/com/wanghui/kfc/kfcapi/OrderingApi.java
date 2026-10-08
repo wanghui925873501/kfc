@@ -1,6 +1,7 @@
 package com.wanghui.kfc.kfcapi;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.wanghui.kfc.basicapi.UpstreamGateway;
 import org.springframework.stereotype.Component;
 
 /** 点餐上游的固定接口封装。 */
@@ -23,6 +24,6 @@ public class OrderingApi {
      * @return 上游菜单 JSON
      */
     public JsonNode menuList(JsonNode request) {
-        return gateway.post(Upstream.ORDERING, "/api/v2/menu/list", request);
+        return gateway.post(KfcUpstream.ORDERING, "/api/v2/menu/list", request);
     }
 }

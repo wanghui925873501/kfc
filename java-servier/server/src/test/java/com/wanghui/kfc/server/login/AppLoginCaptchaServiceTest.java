@@ -9,12 +9,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wanghui.kfc.basicapi.captcha3.Captcha3Client;
+import com.wanghui.kfc.basicapi.captcha3.Captcha3Result;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.api.AppLoginApi;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.AppLoginContext;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.CaptchaProof;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.SendSmsCodeParam;
-import com.wanghui.kfc.kfcapi.apploginkfcappcn.support.Captcha3Client;
-import com.wanghui.kfc.kfcapi.apploginkfcappcn.vo.Captcha3ResultVo;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.vo.SendSmsCodeVo;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.vo.StartCaptchaVo;
 import org.junit.jupiter.api.Test;
@@ -38,7 +38,7 @@ class AppLoginCaptchaServiceTest {
         registration.setData(mapper.readTree("{\"gt\":\"test-gt\","
                 + "\"challenge\":\"test-challenge\",\"userid\":\"test-user\","
                 + "\"gtServerStatus\":1}"));
-        Captcha3ResultVo solved = new Captcha3ResultVo();
+        Captcha3Result solved = new Captcha3Result();
         solved.setChallenge("new-challenge");
         solved.setValidate("test-validate");
         solved.setSeccode("test-validate|jordan");

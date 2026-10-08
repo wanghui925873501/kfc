@@ -1,67 +1,167 @@
+# 内嵌 Web 服务配置。
 server:
+  # 服务监听端口；可通过 SERVER_PORT 覆盖。
   port: ${SERVER_PORT:19111}
+
+# Spring Boot 基础设施配置。
 spring:
+  # 应用身份配置。
   application:
+    # 日志、监控和 Spring 上下文使用的应用名称。
     name: kfc-monolith
+  # 本机外部配置导入规则。
   config:
-    import: "optional:file:../.env.kfc-reverse.local[.properties]"
+    # 按常见启动目录依次查找 Git 忽略的本机配置。
+    import:
+      # 从当前工作目录读取本机配置。
+      - "optional:file:./.env.kfc-reverse.local[.properties]"
+      # 从当前工作目录的上一级读取本机配置。
+      - "optional:file:../.env.kfc-reverse.local[.properties]"
+      # 从当前工作目录的上两级读取本机配置。
+      - "optional:file:../../.env.kfc-reverse.local[.properties]"
+  # MySQL 数据源配置。
   datasource:
+    # JDBC 连接地址；默认连接本机 kfc_app 数据库。
     url: ${DB_URL:jdbc:mysql://localhost:3306/kfc_app?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    # 数据库登录账号。
     username: ${DB_USERNAME:root}
+    # 数据库登录密码，生产环境必须通过外部变量覆盖。
     password: ${DB_PASSWORD:123456}
+  # Spring Data 组件配置。
   data:
+    # Redis 连接配置。
     redis:
+      # Redis 服务主机。
       host: ${REDIS_HOST:localhost}
+      # Redis 服务端口。
       port: ${REDIS_PORT:6379}
+      # Redis 登录密码，生产环境必须通过外部变量覆盖。
       password: ${REDIS_PASSWORD:qs888888###}
+
+# MyBatis-Plus ORM 配置。
 mybatis-plus:
+  # MyBatis 映射行为配置。
   configuration:
+    # 将数据库下划线字段自动映射为 Java 驼峰属性。
     map-underscore-to-camel-case: true
+  # MyBatis-Plus 全局配置。
   global-config:
+    # 数据库实体默认行为配置。
     db-config:
+      # 新增记录时默认使用数据库自增主键。
       id-type: auto
-kfc:
-  upstream:
-    enabled: ${KFC_UPSTREAM_ENABLED:true}
-    urls:
-      ordering: ${KFC_ORDERING_URL:https://order.kfc.com.cn}
-      login: ${KFC_LOGIN_URL:https://login.kfc.com.cn}
-      app-login: ${KFC_APP_LOGIN_URL:https://applogin.kfcapp.cn}
-      coupon: ${KFC_COUPON_URL:https://appcoupon.kfc.com.cn}
-      mall: ${KFC_MALL_URL:https://appmall.kfc.com.cn}
-      prime: ${KFC_PRIME_URL:https://appprime.kfc.com.cn}
-  app-login:
-    client-key: 'kbappkwle8K1Mhlc'
-    client-secret: 'WYjEbpFholuphDuO'
-    des-key: 'D963r1wp'
-    request-secret-key: 'kfc'
+
+# 跨品牌上游访问基础配置。
+basic:
+  # KFC、PHHS 等品牌共用的本机小辉极验三代服务配置。
   captcha3:
+    # 是否允许调用本机小辉版；沿用既有 KFC_CAPTCHA3_ENABLED 开关。
     enabled: ${KFC_CAPTCHA3_ENABLED:false}
+    # 本机小辉版的固定 captcha3 接口地址。
     url: ${KFC_CAPTCHA3_URL:http://127.0.0.1:16254/captcha3}
+    # 小辉版监听局域网地址时使用的访问密钥。
     api-key: ${KFC_CAPTCHA3_API_KEY:}
+  # 上游服务开关与固定基础地址。
+  upstream:
+    # 各品牌真实上游调用开关。
+    enabled:
+      # 是否允许访问 KFC 上游。
+      kfc: ${KFC_UPSTREAM_ENABLED:true}
+      # 是否允许访问 PHHS 上游。
+      phhs: ${PHHS_UPSTREAM_ENABLED:false}
+    # 各业务上游的基础 URL，仅允许配置受控 HTTPS 地址。
+    urls:
+      # KFC 传统点餐接口基础地址。
+      kfc-ordering: ${KFC_ORDERING_URL:https://order.kfc.com.cn}
+      # KFC 传统登录接口基础地址。
+      kfc-login: ${KFC_LOGIN_URL:https://login.kfc.com.cn}
+      # KFC App 统一登录接口基础地址。
+      kfc-app-login: ${KFC_APP_LOGIN_URL:https://applogin.kfcapp.cn}
+      # PHHS App 统一登录接口基础地址。
+      phhs-app-login: ${PHHS_APP_LOGIN_URL:https://applogin.phdapp.cn}
+      # KFC 优惠券接口基础地址。
+      kfc-coupon: ${KFC_COUPON_URL:https://appcoupon.kfc.com.cn}
+      # KFC 商城接口基础地址。
+      kfc-mall: ${KFC_MALL_URL:https://appmall.kfc.com.cn}
+      # KFC 会员权益接口基础地址。
+      kfc-prime: ${KFC_PRIME_URL:https://appprime.kfc.com.cn}
+
+# KFC 品牌专属配置。
+kfc:
+  # KFC App 统一登录协议配置。
+  app-login:
+    # KBS 签名请求头使用的客户端标识；属于敏感配置。
+    client-key: 'kbappkwle8K1Mhlc'
+    # KBS 签名使用的客户端密钥；属于敏感配置。
+    client-secret: 'WYjEbpFholuphDuO'
+    # 手机号和验证码 DES 加密密钥；属于敏感配置。
+    des-key: 'D963r1wp'
+    # KFC 登录请求体中的固定品牌密钥。
+    request-secret-key: 'kfc'
+  # KFC 本地登录会话配置。
   session:
+    # 本地登录会话有效期。
     ttl: ${KFC_SESSION_TTL:PT8H}
+    # 用于加密本地会话的 32 字节 Base64 密钥。
     key-base64: ${KFC_SESSION_KEY_BASE64:}
+  # KFC 后端虚拟客户端档案。
   login-client:
+    # 默认国标城市编码。
     city-code: ${KFC_LOGIN_CITY_CODE:310000}
+    # 模拟的 KFC App 版本号。
     app-version: ${KFC_LOGIN_APP_VERSION:6.37.0}
+    # 模拟 Android 客户端的 User-Agent。
     user-agent: ${KFC_LOGIN_USER_AGENT:Dalvik/2.1.0 (Linux; U; Android 9; Local Test Device Build/LOCAL) SuperKFC Mobile Android Client KFCSuperAPP v6.37.0}
+  # KFC 短信登录并发和防重复配置。
   login-guard:
+    # 同手机号分布式互斥锁有效期。
     mutex-ttl: ${KFC_LOGIN_MUTEX_TTL:PT3M}
+    # 同手机号短信发送冷却时间。
     sms-cooldown: ${KFC_LOGIN_SMS_COOLDOWN:PT1M}
+    # 同手机号验证码登录防重复时间。
     login-cooldown: ${KFC_LOGIN_VERIFY_COOLDOWN:PT10S}
+  # KFC RN 点餐流程配置。
   rn-order:
+    # RN 点餐上游会话的空闲有效期。
     flow-ttl: ${KFC_RN_ORDER_FLOW_TTL:PT15M}
+  # KFC 服务端 HTTP 日志配置。
   http-log:
+    # 是否记录经过脱敏的请求和响应日志。
     enabled: ${KFC_HTTP_LOG_ENABLED:true}
+    # 单次日志允许保留的最大正文字符数。
     max-body-length: ${KFC_HTTP_LOG_MAX_BODY_LENGTH:16384}
+
+# 必胜客 PHHS 品牌专属配置。
+phhs:
+  # PHHS App 统一登录协议配置。
+  login:
+    # KBS 签名请求头使用的 PHHS 客户端标识；当前为明文敏感配置。
+    client-key: 'kbaptkJGtByWrQaP'
+    # KBS 签名使用的 PHHS 客户端密钥；当前为明文敏感配置。
+    client-secret: 'jkJrRIacBwcpK68d'
+    # PHHS 手机号和验证码 DES 加密密钥；当前为明文敏感配置。
+    des-key: 'N3W9sczY'
+    # PHHS 登录请求体中的固定品牌密钥。
+    request-secret-key: ${PHHS_LOGIN_REQUEST_SECRET_KEY:phhs}
+
+# OpenAPI 文档配置。
 springdoc:
+  # OpenAPI JSON 文档配置。
   api-docs:
+    # 是否开放 /v3/api-docs。
     enabled: ${SPRINGDOC_API_DOCS_ENABLED:true}
+  # Swagger UI 配置。
   swagger-ui:
+    # 是否开放 Swagger UI。
     enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:true}
+
+# Spring Boot Actuator 管理端点配置。
 management:
+  # 管理端点总配置。
   endpoints:
+    # Web 暴露规则。
     web:
+      # 仅开放健康检查和应用信息端点。
       exposure:
+        # 允许通过 HTTP 访问的 Actuator 端点列表。
         include: health,info

@@ -1,6 +1,7 @@
 package com.wanghui.kfc.kfcapi;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.wanghui.kfc.basicapi.UpstreamGateway;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 
@@ -27,6 +28,6 @@ public class PrimeApi {
      */
     public JsonNode userCard(String upstreamToken) {
         if (upstreamToken == null || upstreamToken.isBlank()) throw new IllegalArgumentException("Upstream token required");
-        return gateway.get(Upstream.PRIME, "/api/friend/getUserCard", Map.of("token", upstreamToken));
+        return gateway.get(KfcUpstream.PRIME, "/api/friend/getUserCard", Map.of("token", upstreamToken));
     }
 }

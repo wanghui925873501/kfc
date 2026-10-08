@@ -1,5 +1,7 @@
 package com.wanghui.kfc.kfcapi.apploginkfcappcn.support;
 
+import com.wanghui.kfc.kfcapi.KfcUpstream;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.client.ExpectedCount.once;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
@@ -9,20 +11,18 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wanghui.kfc.kfcapi.KfcApiConfiguration;
-import com.wanghui.kfc.kfcapi.GzipResponseInterceptor;
-import com.wanghui.kfc.kfcapi.Upstream;
-import com.wanghui.kfc.kfcapi.UpstreamAuthentication;
-import com.wanghui.kfc.kfcapi.UpstreamGateway;
-import com.wanghui.kfc.kfcapi.UpstreamProperties;
+import com.wanghui.kfc.basicapi.BasicApiConfiguration;
+import com.wanghui.kfc.basicapi.Brand;
+import com.wanghui.kfc.basicapi.GzipResponseInterceptor;
+import com.wanghui.kfc.basicapi.UpstreamAuthentication;
+import com.wanghui.kfc.basicapi.UpstreamGateway;
+import com.wanghui.kfc.basicapi.UpstreamProperties;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 import org.junit.jupiter.api.Test;
@@ -37,7 +37,8 @@ class AppLoginProtocolTest {
     void configuresOnlyTheDomainSpecificAuthenticationBean() {
         try (var context = new AnnotationConfigApplicationContext()) {
             context.registerBean(RestClient.Builder.class, () -> RestClient.builder());
-            context.register(AppLoginProperties.class, AppLoginAuthentication.class, KfcApiConfiguration.class);
+            context.register(AppLoginProperties.class, AppLoginAuthentication.class,
+                    BasicApiConfiguration.class);
             context.refresh();
             assertThat(context.getBeansOfType(UpstreamAuthentication.class)).hasSize(1)
                     .containsValue(context.getBean(AppLoginAuthentication.class));
@@ -67,10 +68,7 @@ class AppLoginProtocolTest {
         var authentication = new AppLoginAuthentication(properties,
                 Clock.fixed(Instant.ofEpochMilli(123), ZoneOffset.UTC));
         var upstreamProperties = new UpstreamProperties();
-        upstreamProperties.setEnabled(true);
-        Map<Upstream, URI> urls = new EnumMap<>(Upstream.class);
-        urls.put(Upstream.APP_LOGIN, URI.create("https://applogin.kfcapp.cn"));
-        upstreamProperties.setUrls(urls);
+        upstreamProperties.getEnabled().put(Brand.KFC, true);
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         builder.requestInterceptor(new GzipResponseInterceptor());
@@ -96,10 +94,10 @@ class AppLoginProtocolTest {
                 .andExpect(header("kbsv", "69ae948d3c4be590e5b1bed9166ef9f5"))
                 .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
-        assertThat(gateway.post(Upstream.APP_LOGIN, "/api/user/sendSmsCode",
+        assertThat(gateway.post(KfcUpstream.APP_LOGIN, "/api/user/sendSmsCode",
                 new ObjectMapper().createObjectNode().put("phone", "cipher"),
                 Map.of("rcsav", "test-version")).get("errCode").asInt()).isZero();
-        gateway.post(Upstream.APP_LOGIN, "/api/user/loginBySmsCode",
+        gateway.post(KfcUpstream.APP_LOGIN, "/api/user/loginBySmsCode",
                 new ObjectMapper().createObjectNode().put("phone", "cipher"), Map.of());
         server.verify();
     }
@@ -114,10 +112,7 @@ class AppLoginProtocolTest {
         var authentication = new AppLoginAuthentication(properties,
                 Clock.fixed(Instant.ofEpochMilli(123), ZoneOffset.UTC));
         var upstreamProperties = new UpstreamProperties();
-        upstreamProperties.setEnabled(true);
-        Map<Upstream, URI> urls = new EnumMap<>(Upstream.class);
-        urls.put(Upstream.APP_LOGIN, URI.create("https://applogin.kfcapp.cn"));
-        upstreamProperties.setUrls(urls);
+        upstreamProperties.getEnabled().put(Brand.KFC, true);
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         UpstreamGateway gateway = new UpstreamGateway(builder.build(), upstreamProperties, authentication);
@@ -133,10 +128,10 @@ class AppLoginProtocolTest {
                 .andExpect(content().string("{\"phone\":\"cipher\"}"))
                 .andExpect(header("kbsv", "459b609ef26013273b6686e9b6ab43d8"))
                 .andRespond(withSuccess("{\"errCode\":0}", MediaType.APPLICATION_JSON));
-        gateway.get(Upstream.APP_LOGIN, "/api/svc/startCaptcha",
+        gateway.get(KfcUpstream.APP_LOGIN, "/api/svc/startCaptcha",
                 Map.of("rt", "1", "type", "MOBILE", "ct", "native"),
                 Map.of("rcsav", "test-version"));
-        gateway.post(Upstream.APP_LOGIN, "/api/svc/to/user/sendSmsCode",
+        gateway.post(KfcUpstream.APP_LOGIN, "/api/svc/to/user/sendSmsCode",
                 new ObjectMapper().createObjectNode().put("phone", "cipher"));
         server.verify();
     }

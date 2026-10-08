@@ -1,8 +1,10 @@
 package com.wanghui.kfc.kfcapi.rnorderkfccomcn.support;
 
+import com.wanghui.kfc.kfcapi.KfcUpstream;
+
 import com.wanghui.kfc.kfcapi.KfcRequestSignature;
-import com.wanghui.kfc.kfcapi.Upstream;
-import com.wanghui.kfc.kfcapi.UpstreamAuthentication;
+import com.wanghui.kfc.basicapi.Upstream;
+import com.wanghui.kfc.basicapi.UpstreamAuthentication;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.support.AppLoginProperties;
 import java.time.Clock;
 import java.util.Map;
@@ -56,7 +58,7 @@ public class RnOrderAuthentication implements UpstreamAuthentication {
      */
     @Override
     public boolean supports(Upstream upstream) {
-        return upstream == Upstream.RN_ORDER;
+        return upstream == KfcUpstream.RN_ORDER;
     }
 
     /**
@@ -74,7 +76,7 @@ public class RnOrderAuthentication implements UpstreamAuthentication {
      */
     @Override
     public void apply(Upstream upstream, String path, String bodyJson, HttpHeaders headers) {
-        if (upstream != Upstream.RN_ORDER) {
+        if (upstream != KfcUpstream.RN_ORDER) {
             throw new IllegalStateException("RN order authentication received the wrong upstream");
         }
         String signPath = SIGNED_PATHS.get(path);

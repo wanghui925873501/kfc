@@ -1,11 +1,13 @@
 package com.wanghui.kfc.kfcapi.apploginkfcappcn.api;
 
+import com.wanghui.kfc.kfcapi.KfcUpstream;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.wanghui.kfc.kfcapi.Upstream;
-import com.wanghui.kfc.kfcapi.UpstreamGateway;
+import com.wanghui.kfc.basicapi.Upstream;
+import com.wanghui.kfc.basicapi.UpstreamGateway;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.AppLoginContext;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.CaptchaProof;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.LoginBySmsCodeParam;
@@ -69,7 +71,7 @@ public class AppLoginApi {
         body.putArray("encodeList").add("phone");
         body.put("isFromCustomerClient", true);
         body.put("secretKey", properties.requireRequestSecretKey());
-        return response(gateway.post(Upstream.APP_LOGIN, "/api/user/sendSmsCode", body,
+        return response(gateway.post(KfcUpstream.APP_LOGIN, "/api/user/sendSmsCode", body,
                 context.headers()), SendSmsCodeVo.class);
     }
 
@@ -83,7 +85,7 @@ public class AppLoginApi {
     public StartCaptchaVo startCaptcha(int rt, AppLoginContext context) {
         if (rt != 1 && rt != 2) throw new IllegalArgumentException("不支持的验证类型");
         context.requireComplete();
-        return response(gateway.get(Upstream.APP_LOGIN, "/api/svc/startCaptcha",
+        return response(gateway.get(KfcUpstream.APP_LOGIN, "/api/svc/startCaptcha",
                 Map.of("rt", Integer.toString(rt), "type", "MOBILE", "ct", "native"),
                 context.headers()), StartCaptchaVo.class);
     }
@@ -108,7 +110,7 @@ public class AppLoginApi {
         body.putArray("encodeList").add("phone");
         body.put("isFromCustomerClient", true);
         body.put("secretKey", properties.requireRequestSecretKey());
-        return response(gateway.post(Upstream.APP_LOGIN, "/api/svc/to/user/sendSmsCode", body,
+        return response(gateway.post(KfcUpstream.APP_LOGIN, "/api/svc/to/user/sendSmsCode", body,
                 param.getContext().headers()), SendSmsCodeVo.class);
     }
 
@@ -137,7 +139,7 @@ public class AppLoginApi {
         body.putArray("encodeList").add("phone").add("smsCode");
         body.put("isFromCustomerClient", true);
         body.put("secretKey", properties.requireRequestSecretKey());
-        return response(gateway.post(Upstream.APP_LOGIN, "/api/svc/to/user/loginBySmsCode", body,
+        return response(gateway.post(KfcUpstream.APP_LOGIN, "/api/svc/to/user/loginBySmsCode", body,
                 context.headers()), LoginBySmsCodeVo.class);
     }
 
@@ -171,7 +173,7 @@ public class AppLoginApi {
         body.put("jPushRegId", context.getJPushRegId());
         body.put("gbCityCode", context.getCityCode());
         body.putArray("encodeList").add("phone").add("smsCode");
-        return response(gateway.post(Upstream.APP_LOGIN, "/api/user/loginBySmsCode", body,
+        return response(gateway.post(KfcUpstream.APP_LOGIN, "/api/user/loginBySmsCode", body,
                 context.headers()), LoginBySmsCodeVo.class);
     }
 

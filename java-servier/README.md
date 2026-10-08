@@ -8,12 +8,14 @@
 java-servier/
 ├─ common/   统一返回等共享类型
 ├─ db/       本地 MySQL 的用户、安装记录、上游身份映射及迁移 SQL
-├─ kfcapi/   第三方域名登记、HTTPS 传输、鉴权和按真实域名划分的接口封装
+├─ basicapi/ 跨品牌共用的 HTTPS 传输、响应、异常和鉴权扩展接口
+├─ kfcapi/   只包含 KFC 上游定义、协议、接口 DTO 和测试
+├─ phhsapi/  只包含 PHHS 上游定义、协议、接口 DTO 和测试
 ├─ kfc-ali-pay/ 支付宝支付会话、状态核验及可选 CDP 人工接管编排
 └─ server/   uni-app 调用的 MVC 接口、内部业务编排、Redis 配置、启动入口
 ```
 
-依赖方向：`server → db/kfcapi/common`，`db/kfcapi → common`。外部接口只从 `server` 暴露；不开放任意 URL 或路径透传。技术版本：JDK 21、Spring Boot 3.5.12、Springdoc OpenAPI 2.8.17、MyBatis-Plus 3.5.17、Lombok 1.18.48、Hutool 5.8.47、Fastjson2 2.0.65、MySQL、Redis、Spring MVC。实体和 DTO 使用成员变量与 Lombok `@Data`，便于逐项设置字段。
+依赖方向：`server → db/basicapi/kfcapi/phhsapi/common`，`kfcapi → basicapi`，`phhsapi → basicapi`；两个品牌模块互不依赖。`basicapi` 的 `Brand` 当前登记 `KFC`、`PHHS`，并保存跨品牌共用的上游传输及本机小辉极验三代客户端；具体品牌域名、签名、加密、请求字段和 DTO 必须留在各自品牌模块。外部接口只从 `server` 暴露；不开放任意 URL 或路径透传。技术版本：JDK 21、Spring Boot 3.5.12、Springdoc OpenAPI 2.8.17、MyBatis-Plus 3.5.17、Lombok 1.18.48、Hutool 5.8.47、Fastjson2 2.0.65、MySQL、Redis、Spring MVC。实体和 DTO 使用成员变量与 Lombok `@Data`，便于逐项设置字段。
 
 ## 上游域名证据与包名
 
@@ -23,27 +25,46 @@ java-servier/
 
 | 配置键 | 当前默认值 | APK 中的证据 | 接口归属可信度 |
 | --- | --- | --- | --- |
-| `ordering` | `https://order.kfc.com.cn` | `kfc-ordering-delivery/modules/01122.js` 的预点餐页面 URL；`01517.js` 有 `/api/v2/menu/list` POST | 页面域名已见，菜单接口是否同域**待抓包确认** |
-| `login` | `https://login.kfc.com.cn` | `01290.js` 的 `baseDomain` 与 `KBS/api`；`01249.js` 有 `/user/token/valid` POST | 配置和路径均有证据，完整协议待确认 |
-| `coupon` | `https://appcoupon.kfc.com.cn` | `01290.js` 的 `baseDomainCoupon`；`KFC_Coupon_App/modules/02027.js` 的 `domainCode: appcoupon` + POST | 路由有证据，参数与鉴权待确认 |
-| `mall` | `https://appmall.kfc.com.cn` | `01290.js` 的 `baseDomainAppmall`；`kfc-ordering-delivery/modules/02625.js` 的 `domainCode: appmall` + GET | 路由有证据，参数与鉴权待确认 |
-| `prime` | `https://appprime.kfc.com.cn` | `01290.js` 的 `baseDomainPrime`；`KFC_App_Activity/modules/03179.js` 的 `domainCode: appprime` + GET | 路由有证据，参数与鉴权待确认 |
+| `kfc-ordering` | `https://order.kfc.com.cn` | `kfc-ordering-delivery/modules/01122.js` 的预点餐页面 URL；`01517.js` 有 `/api/v2/menu/list` POST | 页面域名已见，菜单接口是否同域**待抓包确认** |
+| `kfc-login` | `https://login.kfc.com.cn` | `01290.js` 的 `baseDomain` 与 `KBS/api`；`01249.js` 有 `/user/token/valid` POST | 配置和路径均有证据，完整协议待确认 |
+| `kfc-coupon` | `https://appcoupon.kfc.com.cn` | `01290.js` 的 `baseDomainCoupon`；`KFC_Coupon_App/modules/02027.js` 的 `domainCode: appcoupon` + POST | 路由有证据，参数与鉴权待确认 |
+| `kfc-mall` | `https://appmall.kfc.com.cn` | `01290.js` 的 `baseDomainAppmall`；`kfc-ordering-delivery/modules/02625.js` 的 `domainCode: appmall` + GET | 路由有证据，参数与鉴权待确认 |
+| `kfc-prime` | `https://appprime.kfc.com.cn` | `01290.js` 的 `baseDomainPrime`；`KFC_App_Activity/modules/03179.js` 的 `domainCode: appprime` + GET | 路由有证据，参数与鉴权待确认 |
 
-APK 里还有 `m.4008823823.com.cn`、`appcommon.kfc.com.cn` 等候选。上述五个地址仅是首批静态建模，并非 APK 只访问这些域名。新增接口时，先核对 Reqable 实际 URL，再在 `kfcapi` 中增加固定路径的方法，并记录来源、HTTP 方法、请求字段、鉴权规则、响应样本。`UpstreamGateway` 只供这些内部封装使用。
+APK 里还有 `m.4008823823.com.cn`、`appcommon.kfc.com.cn` 等候选。上述五个地址仅是首批静态建模，并非 APK 只访问这些域名。新增接口时，先核对 Reqable 实际 URL，再在对应品牌模块中增加固定路径的方法，并记录来源、HTTP 方法、请求字段、鉴权规则、响应样本。`basicapi` 的 `UpstreamGateway` 只供品牌内部封装使用，不了解任何具体品牌域名或签名规则。
 
 ## 当前可调用骨架
 
 - `POST /api/v1/catalog/menu` → `CatalogService` → 旧 `OrderingApi.menuList` 仍指向静态候选 `order.kfc.com.cn`，仅作联通样例；真实菜单抓包 URL 属于 `rnorder.kfc.com.cn/preorder-portal`，后续应按该域名重做客户端，当前样例不要用于真实菜单请求。
 - `kfcapi` 的 `rnorderkfccomcn` 底层客户端固定使用真实抓包确认的 `https://rnorder.kfc.com.cn`，实现预点餐会话初始化、定位反查城市、城市列表、附近门店、用户常用门店、门店校验、菜单列表和商品详情。`server` 已通过 `/api/v1/rn-order/**` 暴露强类型只读浏览接口；旧 `/api/v1/catalog/menu` 骨架没有改接新客户端。
 - RN 点餐客户端会从初始化响应保存 `sessionId`、`Set-Cookie` 和 `x-yumc-route-cell`，后续调用复用同一会话。经纬度按抓包 `encodeList` 使用既有 DES 协议加密；签名请求使用去掉 `/store-portal` 或 `/preorder-portal` 的 `/api/...` 短路径。门店查询中抓包未携带 `kb*` 的固定路径保持无签名，未知路径继续拒绝。
-- RN 点餐调用上下文只接收后端已核对的 `deviceId`、`userCode`、上游 ticket、城市和 User-Agent；会话 Cookie、签名头、公共协议字段及加密后的定位均由 `kfcapi` 构造。`RN_ORDER` 默认域名写在 `UpstreamProperties` 中，如确需测试环境覆盖可配置 `kfc.upstream.urls.rn-order`，仍受 HTTPS 和无路径基础地址校验限制。
+- RN 点餐调用上下文只接收后端已核对的 `deviceId`、`userCode`、上游 ticket、城市和 User-Agent；会话 Cookie、签名头、公共协议字段及加密后的定位均由 `kfcapi` 构造。默认域名由 `KfcUpstream.RN_ORDER` 持有，如确需测试环境覆盖可配置 `basic.upstream.urls.kfc-rn-order`，仍受 HTTPS 和无路径基础地址校验限制。
 - `AppLoginApi.sendSmsCode` 和 `AppLoginApi.loginBySmsCode` 使用已抓包确认的 `https://applogin.kfcapp.cn` 两个固定 POST 路径；请求字段、DES 加密和 POST 签名已本地实现。它们只由后端登录编排服务调用，UniApp 不能直接传入上游路径、请求头或设备字段。Java 使用之前授权抓包的安装上下文曾发送成功，返回 `errCode=0`；新生成的独立虚拟设备上下文尚未完成逐条 Reqable 联调，仍以上游当次响应为准。
 - `LoginApi.validateToken`、`CouponApi.availableCoupons`、`MallApi.productByActivityId`、`PrimeApi.userCard` 是内部封装，**尚未向 uni-app 暴露**。它们的路径/方法来自静态 bundle；完整请求和鉴权仍需联调。会员卡方法的上游 token 应由服务端会话安全取得，不要让 uni-app 任意传入。
 - 上游开关默认关闭。`APP_LOGIN` 仅在配置本机凭据且开启上游开关后可发送；其他候选域名仍会因未配置鉴权而拒绝请求。实际短信发送与登录还需要上层完成当次确认、限流和单次触发锁，不要把密钥或上游 token 提交到仓库或下发给 UniApp。
-- `db/src/main/resources/db/migration/` 保留需手动执行的 V1–V6 SQL：V1–V4 建立并注释原有三张表，V5 新增 `kfc_phone_installation`，V6 在确认无重复记录后为 `kfc_user(brand, phone_plain)` 增加唯一索引。新库需按版本顺序各执行一次；已有库只执行尚未应用的脚本。Java 服务不会自动执行这些 SQL。手机号明文及同值 DES 密文仅供有数据库权限的本机核对；验证码不落库。
+- `db/src/main/resources/db/migration/` 保留需手动执行的 V1–V7 SQL：V1–V4 建立并注释原有三张表，V5 新增 `kfc_phone_installation`，V6 在确认无重复记录后为 `kfc_user(brand, phone_plain)` 增加唯一索引，V7 新增品牌隔离的 `phhs_installation` 与 `phhs_phone_installation`。新库需按版本顺序各执行一次；已有库只执行尚未应用的脚本。Java 服务不会自动执行这些 SQL。手机号明文及同值 DES 密文仅供有数据库权限的本机核对；验证码不落库。
 - `KfcIdentityService` 提供安装注册/更新、登录结果关联、后续请求上下文读取；成功登录时调用方须把同次登录的手机号传给 `recordLoginSuccess`，并与上游响应一起保存。`KfcRequestContextService` 在每次业务请求中按手机号从 `kfc_user` 加载持久化 token、安装与设备信息。`KfcSessionStore` 仍为兼容已有登录响应而签发 Redis 会话，但后续业务接口不依赖它。
-- 独立的 `KFC_SESSION_KEY_BASE64` 是 32 字节密钥的 Base64 编码，本机真实值存于 Git 忽略的根目录 `.env.kfc-reverse.local`。`server` 从相对于 `java-servier` 启动目录的该文件自动导入；其他运行目录可通过进程环境提供同名变量。没有密钥时服务可启动，但签发会话会明确失败。
+- 独立的 `KFC_SESSION_KEY_BASE64` 是 32 字节密钥的 Base64 编码，本机真实值存于 Git 忽略的根目录 `.env.kfc-reverse.local`。`server` 会从当前目录、上一级或上两级目录自动查找该文件，以兼容工作区根目录、`java-servier` 和 `java-servier/server` 三种常用启动位置；其他运行目录可通过进程环境提供同名变量。没有密钥时服务可启动，但签发会话会明确失败。
 - 登录 Controller 在后端内部按手机号维护安装上下文，没有向 UniApp 开放任意安装字段登记。所有 `/api/v1/**` 请求由 Spring MVC 拦截器读取顶层 `phone`；除标记为登录可选的接口外，必须能加载完整的用户、token、安装与设备上下文后才进入 Controller。城市、位置、版本、动态风控字段按当前后端客户端档案或已验证应用状态取得，不能长期套用抓包值。
+
+### 必胜客 PHHS 短信登录客户端
+
+`phhsapi` 的 `apploginphdappcn` 域名包按 `api`、`param`、`support`、`vo` 分层，并依据 Reqable 会话 `371` 和 `497` 提供两个固定 Java 方法：`PhhsLoginApi.sendSmsCode` 调用 `/api/user/sendSmsCode`，`PhhsLoginApi.loginBySmsCode` 调用 `/api/user/loginBySmsCode`。客户端固定使用 `https://applogin.phdapp.cn`、`mainBrand=PHHS`、抓包确认的 JSON 字段顺序、DES/CBC/PKCS5Padding 加密和 PHHS 自有 POST 签名实现；调用方不能传入任意域名或路径，也不依赖 `kfcapi` 的签名代码。
+
+调用时构造同一安装的 `PhhsLoginContext`，再分别传入 `PhhsSendSmsCodeParam` 或 `PhhsLoginBySmsCodeParam`。手机号和验证码只在 Java 进程内短暂存在，参数与响应对象的字符串输出会排除敏感字段；登录 token 只供后端继续处理，不得下发到前端或写入日志。按用户对当前本机私有工程的明确要求，`PHHS_CLIENT_KEY`、`PHHS_CLIENT_SEC`、`PHHS_DES_KEY` 已直接配置在 `server/application.yml`；该文件现在包含敏感明文，提交或分享仓库前必须移回忽略配置并更换相关凭据。
+
+`PhhsLiveLoginTest` 提供发码和登录两个彼此独立、默认 `@Disabled` 的真实测试。只有账号持有人对当前阶段明确授权后，才可把手机号、验证码通过临时进程环境 `PHHS_LIVE_PHONE`、`PHHS_LIVE_SMS_CODE` 传入，并为本批次设置新的 `PHHS_LIVE_RUN_ID`。测试会在忽略目录 `抓包文件/登录/phhs-live-test/` 按手机号摘要、批次和阶段原子建锁；普通 `mvn -s .mvn/settings.xml clean verify` 不会访问必胜客上游。不得删除旧锁重放，也不得把真实值写回测试源码。
+
+`server/src/test/java/com/wanghui/kfc/server/api/phhs/apploginphdappcn/PhhsLoginApiTest.java` 另提供与 KFC `AppLoginApiTest` 一致的 Spring Boot 手工内测入口，并在本机控制台打印完整请求头、原始/格式化请求体、响应头及 gzip 解压后的响应体。控制台内容包含手机号密文、设备标识和登录 token，只能留在本机。手机号、验证码和测试批次直接在对应测试方法内手工填写，不从 `Properties` 或进程环境读取。运行前须先手工执行 V7 数据库脚本；只临时移除目标方法的 `@Disabled`，执行后立即恢复：
+
+```powershell
+mvn -s .mvn/settings.xml -pl server -am "-Dtest=PhhsLoginApiTest#sendSmsCodeTest" -Dsurefire.failIfNoSpecifiedTests=false test
+mvn -s .mvn/settings.xml -pl server -am "-Dtest=PhhsLoginApiTest#loginBySmsCodeTest" -Dsurefire.failIfNoSpecifiedTests=false test
+```
+
+两个阶段须填写相同手机号和批次标识，并分别建立 `send`、`login` 锁。首次发送前，`PhhsPhoneDeviceService` 按 KFC 相同算法生成 UUID+毫秒时间戳设备 ID、`3 + MD5(随机 UUID)` TDID 和独立风险会话 UUID，保存到 PHHS 自己的两张表；登录阶段按手机号复用同一上下文，不读取 `PHHS_LOGIN_*`。当前 PHHS 内测只核对上游 `errCode`、登录数据和 token 是否存在，不写入 KFC 用户表，也不签发 KFC 本地会话。
+
+PHHS 发码或登录收到 `5910060`、`5910061` 时，由 `PhhsLoginCaptchaService` 按 APK 流程调用 `/api/svc/startCaptcha`，再调用 `basicapi` 中跨品牌共用的本机小辉版 `/captcha3`，成功后携带 `gtChallenge`、`gtValidate`、`gtSeccode`、`userid`、`gtServerStatus`、`rt`、`event_id` 请求对应 `/api/svc/to/user/**` 路径。整个挑战仍处于原阶段单次锁内，每个阶段最多追加一次上游请求；注册、识别或补发失败时立即停止，不循环重试。配置现位于 `basic.captcha3`，为兼容现有本机环境继续使用 `KFC_CAPTCHA3_ENABLED`、`KFC_CAPTCHA3_URL`、`KFC_CAPTCHA3_API_KEY`。
 
 ## 前端短信登录接口与 OpenAPI
 

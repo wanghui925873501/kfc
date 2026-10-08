@@ -1,6 +1,7 @@
 package com.wanghui.kfc.kfcapi;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.wanghui.kfc.basicapi.UpstreamGateway;
 import org.springframework.stereotype.Component;
 
 /** 优惠券上游的固定接口封装。 */
@@ -23,6 +24,6 @@ public class CouponApi {
      * @return 上游优惠券 JSON
      */
     public JsonNode availableCoupons(JsonNode request) {
-        return gateway.post(Upstream.COUPON, "/api/coupon/queryAvailableCouponV2", request);
+        return gateway.post(KfcUpstream.COUPON, "/api/coupon/queryAvailableCouponV2", request);
     }
 }

@@ -1,5 +1,7 @@
 package com.wanghui.kfc.kfcapi.apploginkfcappcn.api;
 
+import com.wanghui.kfc.kfcapi.KfcUpstream;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -10,8 +12,8 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wanghui.kfc.kfcapi.Upstream;
-import com.wanghui.kfc.kfcapi.UpstreamGateway;
+import com.wanghui.kfc.basicapi.Upstream;
+import com.wanghui.kfc.basicapi.UpstreamGateway;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.AppLoginContext;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.CaptchaProof;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.param.LoginBySmsCodeParam;
@@ -35,14 +37,14 @@ class AppLoginApiTest {
         AppLoginApi api = new AppLoginApi(gateway, new AppLoginCrypto(properties), properties, mapper);
         AppLoginContext context = new AppLoginContext("test-tdid", "test-device", "", "test-city",
                 "test-channel", "", "test-rcsdcid", "test-rcsav", "test-agent");
-        when(gateway.post(eq(Upstream.APP_LOGIN), any(), any(JsonNode.class), anyMap()))
+        when(gateway.post(eq(KfcUpstream.APP_LOGIN), any(), any(JsonNode.class), anyMap()))
                 .thenReturn(mapper.readTree("{\"errCode\":0,\"data\":{\"mainBrandData\":{\"token\":\"test-token\"}}}"));
 
         api.sendSmsCode(new SendSmsCodeParam("test-value", context));
         api.loginBySmsCode(new LoginBySmsCodeParam("test-value", "test-code", context));
 
         ArgumentCaptor<JsonNode> sendBody = ArgumentCaptor.forClass(JsonNode.class);
-        verify(gateway).post(eq(Upstream.APP_LOGIN), eq("/api/user/sendSmsCode"), sendBody.capture(),
+        verify(gateway).post(eq(KfcUpstream.APP_LOGIN), eq("/api/user/sendSmsCode"), sendBody.capture(),
                 eq(context.headers()));
         assertThat(sendBody.getValue().path("phone").asText()).isEqualTo("604xISIBN/T1giD2D4t9iQ==");
         assertThat(sendBody.getValue().path("sendType").asInt()).isEqualTo(3);
@@ -53,7 +55,7 @@ class AppLoginApiTest {
                 + "\"secretKey\":\"test-body-value\"}");
 
         ArgumentCaptor<JsonNode> loginBody = ArgumentCaptor.forClass(JsonNode.class);
-        verify(gateway).post(eq(Upstream.APP_LOGIN), eq("/api/user/loginBySmsCode"), loginBody.capture(),
+        verify(gateway).post(eq(KfcUpstream.APP_LOGIN), eq("/api/user/loginBySmsCode"), loginBody.capture(),
                 eq(context.headers()));
         assertThat(loginBody.getValue().path("phone").asText()).isNotEqualTo("test-value");
         assertThat(loginBody.getValue().path("smsCode").asText()).isNotEqualTo("test-code");
@@ -83,9 +85,9 @@ class AppLoginApiTest {
         AppLoginApi api = new AppLoginApi(gateway, new AppLoginCrypto(properties), properties, mapper);
         AppLoginContext context = new AppLoginContext("test-tdid", "test-device", "", "test-city",
                 "test-channel", "", "test-rcsdcid", "test-rcsav", "test-agent");
-        when(gateway.get(eq(Upstream.APP_LOGIN), eq("/api/svc/startCaptcha"), anyMap(), anyMap()))
+        when(gateway.get(eq(KfcUpstream.APP_LOGIN), eq("/api/svc/startCaptcha"), anyMap(), anyMap()))
                 .thenReturn(mapper.readTree("{\"errCode\":0,\"data\":{\"gt\":\"test-gt\"}}"));
-        when(gateway.post(eq(Upstream.APP_LOGIN), eq("/api/svc/to/user/sendSmsCode"),
+        when(gateway.post(eq(KfcUpstream.APP_LOGIN), eq("/api/svc/to/user/sendSmsCode"),
                 any(JsonNode.class), anyMap())).thenReturn(mapper.readTree("{\"errCode\":0}"));
         CaptchaProof proof = new CaptchaProof();
         proof.setRt(1);
@@ -98,11 +100,11 @@ class AppLoginApiTest {
 
         assertThat(api.startCaptcha(1, context).getData().path("gt").asText()).isEqualTo("test-gt");
         api.sendSmsCodeVerified(new SendSmsCodeParam("test-value", context), proof);
-        verify(gateway).get(eq(Upstream.APP_LOGIN), eq("/api/svc/startCaptcha"),
+        verify(gateway).get(eq(KfcUpstream.APP_LOGIN), eq("/api/svc/startCaptcha"),
                 eq(java.util.Map.of("rt", "1", "type", "MOBILE", "ct", "native")),
                 eq(context.headers()));
         ArgumentCaptor<JsonNode> body = ArgumentCaptor.forClass(JsonNode.class);
-        verify(gateway).post(eq(Upstream.APP_LOGIN), eq("/api/svc/to/user/sendSmsCode"),
+        verify(gateway).post(eq(KfcUpstream.APP_LOGIN), eq("/api/svc/to/user/sendSmsCode"),
                 body.capture(), eq(context.headers()));
         assertThat(body.getValue().path("phone").asText()).isNotEqualTo("test-value");
         assertThat(body.getValue().path("event_id").asText()).isEqualTo("test-event");

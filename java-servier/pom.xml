@@ -8,7 +8,9 @@
     <modules>
         <module>common</module>
         <module>db</module>
+        <module>basicapi</module>
         <module>kfcapi</module>
+        <module>phhsapi</module>
         <module>kfc-ali-pay</module>
         <module>server</module>
     </modules>
@@ -28,7 +30,9 @@
         <dependency><groupId>com.baomidou</groupId><artifactId>mybatis-plus-bom</artifactId><version>${mybatis-plus.version}</version><type>pom</type><scope>import</scope></dependency>
         <dependency><groupId>${project.groupId}</groupId><artifactId>common</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>${project.groupId}</groupId><artifactId>db</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>${project.groupId}</groupId><artifactId>basicapi</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>${project.groupId}</groupId><artifactId>kfcapi</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>${project.groupId}</groupId><artifactId>phhsapi</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><version>${lombok.version}</version></dependency>
         <dependency><groupId>cn.hutool</groupId><artifactId>hutool-all</artifactId><version>${hutool.version}</version></dependency>
         <dependency><groupId>com.alibaba.fastjson2</groupId><artifactId>fastjson2</artifactId><version>${fastjson2.version}</version></dependency>

@@ -1,6 +1,7 @@
 package com.wanghui.kfc.kfcapi;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.wanghui.kfc.basicapi.UpstreamGateway;
 import org.springframework.stereotype.Component;
 
 /** 登录上游的固定接口封装，不直接向 uni-app 暴露。 */
@@ -23,6 +24,6 @@ public class LoginApi {
      * @return 上游校验结果 JSON
      */
     public JsonNode validateToken(JsonNode request) {
-        return gateway.post(Upstream.LOGIN, "/KBS/api/user/token/valid", request);
+        return gateway.post(KfcUpstream.LOGIN, "/KBS/api/user/token/valid", request);
     }
 }

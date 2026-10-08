@@ -1,7 +1,7 @@
 package com.wanghui.kfc.server.web;
 
 import com.wanghui.kfc.common.ApiResponse;
-import com.wanghui.kfc.kfcapi.UpstreamException;
+import com.wanghui.kfc.basicapi.UpstreamException;
 import com.wanghui.kfc.server.login.KfcLoginException;
 import com.wanghui.kfc.server.rnorder.RnOrderException;
 import org.springframework.http.HttpStatus;

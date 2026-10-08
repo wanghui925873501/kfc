@@ -1,6 +1,7 @@
 package com.wanghui.kfc.kfcapi;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.wanghui.kfc.basicapi.UpstreamGateway;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +29,6 @@ public class MallApi {
         if (activityId == null || !activityId.matches("[A-Za-z0-9_-]{1,64}")) {
             throw new IllegalArgumentException("Invalid activityId");
         }
-        return gateway.get(Upstream.MALL, "/api/kmall/getProdByActiId", Map.of("activityId", activityId));
+        return gateway.get(KfcUpstream.MALL, "/api/kmall/getProdByActiId", Map.of("activityId", activityId));
     }
 }

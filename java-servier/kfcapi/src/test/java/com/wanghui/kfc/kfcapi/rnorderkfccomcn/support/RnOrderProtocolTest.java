@@ -9,10 +9,11 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wanghui.kfc.kfcapi.GzipResponseInterceptor;
+import com.wanghui.kfc.basicapi.Brand;
+import com.wanghui.kfc.basicapi.GzipResponseInterceptor;
 import com.wanghui.kfc.kfcapi.KfcRequestSignature;
-import com.wanghui.kfc.kfcapi.UpstreamGateway;
-import com.wanghui.kfc.kfcapi.UpstreamProperties;
+import com.wanghui.kfc.basicapi.UpstreamGateway;
+import com.wanghui.kfc.basicapi.UpstreamProperties;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.support.AppLoginCrypto;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.support.AppLoginProperties;
 import com.wanghui.kfc.kfcapi.rnorderkfccomcn.api.RnOrderApi;
@@ -169,7 +170,7 @@ class RnOrderProtocolTest {
         Clock clock = Clock.fixed(Instant.ofEpochMilli(123), ZoneOffset.UTC);
         RnOrderAuthentication authentication = new RnOrderAuthentication(credentials, clock);
         UpstreamProperties upstream = new UpstreamProperties();
-        upstream.setEnabled(true);
+        upstream.getEnabled().put(Brand.KFC, true);
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         builder.requestInterceptor(new GzipResponseInterceptor());

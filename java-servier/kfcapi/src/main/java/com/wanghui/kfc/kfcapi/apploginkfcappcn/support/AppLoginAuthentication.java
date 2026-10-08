@@ -1,7 +1,9 @@
 package com.wanghui.kfc.kfcapi.apploginkfcappcn.support;
 
-import com.wanghui.kfc.kfcapi.Upstream;
-import com.wanghui.kfc.kfcapi.UpstreamAuthentication;
+import com.wanghui.kfc.kfcapi.KfcUpstream;
+
+import com.wanghui.kfc.basicapi.Upstream;
+import com.wanghui.kfc.basicapi.UpstreamAuthentication;
 import java.time.Clock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -37,7 +39,7 @@ public class AppLoginAuthentication implements UpstreamAuthentication {
      */
     @Override
     public boolean supports(Upstream upstream) {
-        return upstream == Upstream.APP_LOGIN;
+        return upstream == KfcUpstream.APP_LOGIN;
     }
 
     /**
@@ -51,7 +53,7 @@ public class AppLoginAuthentication implements UpstreamAuthentication {
      */
     @Override
     public void apply(Upstream upstream, String path, String bodyJson, HttpHeaders headers) {
-        if (upstream != Upstream.APP_LOGIN) {
+        if (upstream != KfcUpstream.APP_LOGIN) {
             throw new IllegalStateException("Upstream authentication is not configured for " + upstream);
         }
         String signPath = switch (path) {

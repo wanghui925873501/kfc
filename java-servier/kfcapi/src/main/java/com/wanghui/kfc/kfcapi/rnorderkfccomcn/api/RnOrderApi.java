@@ -1,11 +1,13 @@
 package com.wanghui.kfc.kfcapi.rnorderkfccomcn.api;
 
+import com.wanghui.kfc.kfcapi.KfcUpstream;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.wanghui.kfc.kfcapi.Upstream;
-import com.wanghui.kfc.kfcapi.UpstreamGateway;
-import com.wanghui.kfc.kfcapi.UpstreamResponse;
+import com.wanghui.kfc.basicapi.Upstream;
+import com.wanghui.kfc.basicapi.UpstreamGateway;
+import com.wanghui.kfc.basicapi.UpstreamResponse;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.support.AppLoginCrypto;
 import com.wanghui.kfc.kfcapi.apploginkfcappcn.support.AppLoginProperties;
 import com.wanghui.kfc.kfcapi.rnorderkfccomcn.param.RnOrderContext;
@@ -117,7 +119,7 @@ public class RnOrderApi {
         body.putArray("encodeList").add("body.geoLocation.lng").add("body.geoLocation.lat")
                 .add("userLatitude").add("userLongitude");
         appendCustomerMarker(body);
-        UpstreamResponse response = gateway.postForResponse(Upstream.RN_ORDER, INIT_PATH, body,
+        UpstreamResponse response = gateway.postForResponse(KfcUpstream.RN_ORDER, INIT_PATH, body,
                 headers(context, null));
         requireJsonObject(response);
         RnOrderSession session = new RnOrderSession();
@@ -384,7 +386,7 @@ public class RnOrderApi {
 
     private JsonNode post(RnOrderContext context, RnOrderSession session,
                           String path, ObjectNode body) {
-        UpstreamResponse response = gateway.postForResponse(Upstream.RN_ORDER, path, body,
+        UpstreamResponse response = gateway.postForResponse(KfcUpstream.RN_ORDER, path, body,
                 headers(context, session));
         requireJsonObject(response);
         session.absorb(response, false);
